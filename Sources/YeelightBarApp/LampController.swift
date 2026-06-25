@@ -148,7 +148,7 @@ final class LampController: ObservableObject {
         guard let device else { connecting = false; return }
         let ip = selected?.ip ?? ""
         Task.detached {
-            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power"])) ?? []
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb"])) ?? []
             await MainActor.run {
                 self.connecting = false
                 guard props.count >= 4 else {
@@ -168,7 +168,7 @@ final class LampController: ObservableObject {
     private func pollState() {
         guard let device, connected else { return }
         Task.detached {
-            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power"])) ?? []
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb"])) ?? []
             await MainActor.run { if props.count >= 4 { self.apply(props) } }
         }
     }
@@ -193,7 +193,7 @@ final class LampController: ObservableObject {
         let expectOn = power
         let epoch = pollEpoch
         Task.detached {
-            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power"])) ?? []
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb"])) ?? []
             await MainActor.run {
                 guard self.connected, epoch == self.pollEpoch else { return }   // ignore stale/superseded reads
                 if props.count >= 4 {
@@ -239,19 +239,37 @@ final class LampController: ObservableObject {
         power = (props[0] == "on")
         brightness = Double(props[1]) ?? brightness
         colorTempK = Double(props[2]) ?? colorTempK
-        if let rgb = Int(props[3]), rgb > 0 { ambientColor = Color(rgb: rgb) }
-        if props.count > 4 { ambientOn = (props[4] == "on") }
+        // Colour read-back: the bar reports it on bg_rgb/bg_power; a plain strip on rgb/power.
+        if selectedIsBar {
+            if let rgb = Int(props[3]), rgb > 0 { ambientColor = Color(rgb: rgb) }
+            if props.count > 4 { ambientOn = (props[4] == "on") }
+        } else {
+            if props.count > 5, let rgb = Int(props[5]), rgb > 0 { ambientColor = Color(rgb: rgb) }
+            ambientOn = power
+        }
     }
 
     // MARK: - Control (push current published value to the lamp)
 
-    /// Master power for the whole device. This Screen Light Bar Pro ignores `set_power`
-    /// for full power-off — `dev_toggle` is the only method that reliably toggles it.
+    /// True for the Screen Light Bar Pro (lamp15) — it ignores `set_power off` and only
+    /// responds to `dev_toggle`. Plain strips/bulbs reject `dev_toggle` ("method not
+    /// supported") and need ordinary `set_power`.
+    private var selectedIsBar: Bool {
+        guard let d = selected else { return false }
+        return d.support.contains("bg_set_rgb") || d.model == "lamp15"
+    }
+
+    /// Master power for the whole device. The bar needs `dev_toggle`; everything else uses
+    /// `set_power` with an explicit target (deterministic and actually supported).
     func togglePower() {
         let target = !power
         if !target { stopScreenSync(); stopMusicSync() }
         power = target
-        push { try $0.control("dev_toggle", []) }
+        if selectedIsBar {
+            push { try $0.control("dev_toggle", []) }
+        } else {
+            push { try $0.power(target) }
+        }
         scheduleResync()
     }
 
@@ -262,9 +280,10 @@ final class LampController: ObservableObject {
         ambientColor = c
         ambientOn = true
         ambientWork?.cancel()
+        let powerMethod = colorPowerMethod
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            self.push { try $0.control("bg_set_power", ["on", "smooth", 0]) } // ensure ambient is on
+            self.push { try $0.control(powerMethod, ["on", "smooth", 0]) } // ensure the colour channel is on
             self.pushAmbient()
         }
         ambientWork = work
@@ -272,14 +291,24 @@ final class LampController: ObservableObject {
     }
     func pushBrightness() { let v = Int(brightness); push { try $0.setBrightness(v) } }
     func pushColorTemp() { let k = Int(colorTempK); push { try $0.setColorTemp(k) } }
-    func pushAmbient() { let rgb = ambientColor.rgbInt; push { try $0.setAmbientRGB(rgb) } }
+    func pushAmbient() {
+        let rgb = ambientColor.rgbInt
+        if selectedIsBar { push { try $0.setAmbientRGB(rgb) } }       // bar: separate bg channel
+        else { push { try $0.control("set_rgb", [rgb & 0xFFFFFF, "smooth", 300]) } } // strip/bulb: main channel
+    }
 
-    /// Independent on/off for the ambient (back) light only.
+    /// The colourful channel's power method: the bar has a separate "bg" channel; a plain
+    /// strip/bulb has only its main channel.
+    private var colorPowerMethod: String { selectedIsBar ? "bg_set_power" : "set_power" }
+
+    /// Independent on/off for the colour channel.
     func setAmbientPower(_ on: Bool) {
-        if !on { stopScreenSync(); stopMusicSync() }   // backlight off → stop any running sync
+        if !on { stopScreenSync(); stopMusicSync() }   // colour off → stop any running sync
         ambientOn = on
+        if !selectedIsBar { power = on }               // single-channel device: colour power == device power
+        let m = colorPowerMethod
         let v = on ? "on" : "off"
-        push { try $0.control("bg_set_power", [v, "smooth", 300]) }
+        push { try $0.control(m, [v, "smooth", 300]) }
     }
 
     func applyScene(ct: Int, bright: Int) {
