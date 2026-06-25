@@ -1,18 +1,18 @@
 import SwiftUI
 import AppKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory) // menu-bar agent, no Dock icon
-    }
-}
-
 @main
 struct YeelightBarApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var lamp = LampController()
 
     var body: some Scene {
+        // Full resizable app window (Dock icon, proper configuration surface).
+        Window("YeelightBar", id: "main") {
+            FullView(lamp: lamp)
+        }
+        .windowResizability(.contentSize)
+
+        // Mini quick-controls in the status bar.
         MenuBarExtra("Yeelight", systemImage: "lightbulb") {
             MenuPanelView(lamp: lamp)
         }

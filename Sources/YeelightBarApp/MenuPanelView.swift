@@ -4,6 +4,7 @@ import YeelightKit
 
 struct MenuPanelView: View {
     @ObservedObject var lamp: LampController
+    @Environment(\.openWindow) private var openWindow
 
     static let ambientPresets: [Color] = [
         Color(rgb: 0xFF5A3C), Color(rgb: 0xFFB23E), Color(rgb: 0xF5E6C8),
@@ -298,6 +299,7 @@ struct MenuPanelView: View {
     private var footer: some View {
         HStack(spacing: 14) {
             Button { lamp.backToDevices() } label: { Label("Devices", systemImage: "rectangle.stack") }.buttonStyle(.borderless)
+            Button { openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true) } label: { Label("Окно", systemImage: "macwindow") }.buttonStyle(.borderless)
             Spacer()
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.buttonStyle(.borderless)
         }
@@ -378,6 +380,9 @@ struct MenuPanelView: View {
                 TextField("192.168.1.x", text: $lamp.manualIP).textFieldStyle(.roundedBorder).onSubmit { lamp.addManualIP() }
                 Button("Add") { lamp.addManualIP() }.disabled(lamp.manualIP.isEmpty)
             }
+            Button { openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true) } label: {
+                Label("Открыть полное окно", systemImage: "macwindow")
+            }.buttonStyle(.bordered).frame(maxWidth: .infinity)
         }
         .padding(14)
     }
