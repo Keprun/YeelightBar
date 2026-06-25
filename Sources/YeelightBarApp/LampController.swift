@@ -158,7 +158,7 @@ final class LampController: ObservableObject {
         guard let device else { connecting = false; return }
         let ip = selected?.ip ?? ""
         Task.detached {
-            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb"])) ?? []
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
             await MainActor.run {
                 self.connecting = false
                 guard props.count >= 4 else {
@@ -178,7 +178,7 @@ final class LampController: ObservableObject {
     private func pollState() {
         guard let device, connected else { return }
         Task.detached {
-            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb"])) ?? []
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
             await MainActor.run { if props.count >= 4 { self.apply(props) } }
         }
     }
@@ -203,7 +203,7 @@ final class LampController: ObservableObject {
         let expectOn = power
         let epoch = pollEpoch
         Task.detached {
-            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb"])) ?? []
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
             await MainActor.run {
                 guard self.connected, epoch == self.pollEpoch else { return }   // ignore stale/superseded reads
                 if props.count >= 4 {
@@ -246,14 +246,17 @@ final class LampController: ObservableObject {
     }
 
     private func apply(_ props: [String]) {
-        power = (props[0] == "on")
+        // props: [power, bright, ct, bg_rgb, bg_power, rgb, main_power]
         brightness = Double(props[1]) ?? brightness
         colorTempK = Double(props[2]) ?? colorTempK
-        // Colour read-back: the bar reports it on bg_rgb/bg_power; a plain strip on rgb/power.
         if selectedIsBar {
+            // The bar's front light is reported by main_power; its `power` prop sticks at "on"
+            // even when the front is dark, so never trust `power` for the front state here.
+            power = (props.count > 6 ? props[6] : props[0]) == "on"
             if let rgb = Int(props[3]), rgb > 0 { ambientColor = Color(rgb: rgb) }
             if props.count > 4 { ambientOn = (props[4] == "on") }
         } else {
+            power = (props[0] == "on")                  // strips report front state honestly
             if props.count > 5, let rgb = Int(props[5]), rgb > 0 { ambientColor = Color(rgb: rgb) }
             ambientOn = power
         }
