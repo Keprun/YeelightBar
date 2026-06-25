@@ -170,7 +170,7 @@ struct FullView: View {
                                 Text(name(d)).font(.callout)
                                 Text(d.ip).font(.caption).foregroundStyle(.secondary)
                                 Spacer()
-                                Menu(zoneLabel(lamp.syncRegions[d.ip])) {
+                                Menu(zoneLabel(lamp.displayRegion(d.ip))) {
                                     Button("Выкл") { lamp.setRegion(d.ip, nil) }
                                     Button("Верх") { lamp.setRegion(d.ip, .top) }
                                     Button("Низ") { lamp.setRegion(d.ip, .bottom) }

@@ -187,7 +187,7 @@ struct MenuPanelView: View {
                         Text(friendlyName(d)).font(.caption).lineLimit(1)
                         Text(d.ip).font(.caption2).foregroundStyle(.secondary)
                         Spacer()
-                        Menu(regionLabel(lamp.syncRegions[d.ip])) {
+                        Menu(regionLabel(lamp.displayRegion(d.ip))) {
                             Button("Выкл") { lamp.setRegion(d.ip, nil) }
                             Button("Верх") { lamp.setRegion(d.ip, .top) }
                             Button("Низ") { lamp.setRegion(d.ip, .bottom) }

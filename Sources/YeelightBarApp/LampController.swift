@@ -132,7 +132,6 @@ final class LampController: ObservableObject {
         stopMusicSync()
         pollTimer?.invalidate(); pollTimer = nil
         selected = d
-        if syncRegions[d.ip] == nil { syncRegions[d.ip] = .top }   // primary defaults to the top band
         device = YeelightDevice(ip: d.ip, tcpPort: d.port)
         if !d.id.isEmpty { UserDefaults.standard.set(d.id, forKey: savedIDKey) }
         UserDefaults.standard.set(d.ip, forKey: savedIPKey)
@@ -342,7 +341,8 @@ final class LampController: ObservableObject {
         ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         screenSyncOn = true            // optimistic; reverted by onState on failure
         screenSyncStatus = "Запуск…"
-        push { try $0.control("bg_set_power", ["on", "smooth", 200]) } // ensure ambient is on
+        let m = colorPowerMethod
+        push { try $0.control(m, ["on", "smooth", 200]) }   // ensure the colour channel is on
         sync.start(targets: targets)
     }
 
@@ -366,8 +366,9 @@ final class LampController: ObservableObject {
         ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         musicSyncOn = true
         musicSyncStatus = "Запуск…"
-        push { try $0.control("bg_set_power", ["on", "smooth", 200]) } // ensure ambient is on
-        music.start(targets: musicTargets())   // music is region-agnostic — drive every device
+        let m = colorPowerMethod
+        push { try $0.control(m, ["on", "smooth", 200]) }   // ensure the colour channel is on
+        music.start(targets: syncTargets())   // same opt-in set as screen sync (region ignored for music)
     }
 
     func stopMusicSync() {
@@ -380,21 +381,31 @@ final class LampController: ObservableObject {
 
     // MARK: - Multi-device sync targets (each lamp samples its own screen region)
 
-    /// Screen-sync targets: only devices the user has assigned a screen region to.
+    /// Devices that participate in sync (screen AND music): the connected primary always does
+    /// (using its chosen zone, default top), plus any OTHER device the user has EXPLICITLY assigned
+    /// a zone to. Devices the user never opted in (no zone) are left untouched — so selecting music
+    /// while on the strip won't silently grab every other lamp in the home.
     private func syncTargets() -> [SyncTarget] {
-        devices.compactMap { d in
-            guard let region = syncRegions[d.ip] else { return nil }
-            return SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: region)
+        var out: [SyncTarget] = []
+        if let d = selected {
+            out.append(SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: syncRegions[d.ip] ?? .top))
         }
-    }
-
-    /// Music targets: every device (music is region-agnostic — the under-desk strip should pulse too).
-    private func musicTargets() -> [SyncTarget] {
-        devices.map { SyncTarget(ip: $0.ip, port: $0.port, method: streamMethod(for: $0), region: .full) }
+        for d in devices where d.ip != selected?.ip {
+            guard let region = syncRegions[d.ip] else { continue }
+            out.append(SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: region))
+        }
+        return out
     }
 
     func setRegion(_ ip: String, _ region: SyncRegion?) {
         if let region { syncRegions[ip] = region } else { syncRegions.removeValue(forKey: ip) }
+    }
+
+    /// What the zone menu should display: the connected primary always participates (default top),
+    /// so it never shows «Выкл»; other devices show their explicit zone or nil («Выкл»).
+    func displayRegion(_ ip: String) -> SyncRegion? {
+        if ip == selected?.ip { return syncRegions[ip] ?? .top }
+        return syncRegions[ip]
     }
 
     /// bg-capable lamps stream the ambient channel; plain RGB strips stream the main channel.
@@ -413,7 +424,7 @@ final class LampController: ObservableObject {
                 sync.stop(); sync.start(targets: t)
             }
         }
-        if musicSyncOn { music.stop(); music.start(targets: musicTargets()) }
+        if musicSyncOn { music.stop(); music.start(targets: syncTargets()) }
     }
 
     // MARK: - Effect mode (single off / screen / music selector)
