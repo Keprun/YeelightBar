@@ -9,6 +9,10 @@ enum MusicStyle: Hashable { case beat, spectrum }
 /// bass / mid / treble with one-pole IIR filters, and drives the lamp's ambient.
 ///  - .beat     → brightness pumps on the bass/kick, hue drifts.
 ///  - .spectrum → R = bass, G = mid, B = treble (live colour visualiser).
+///
+/// Same lifecycle invariant as ScreenSyncEngine: stream/out/generation/filter-state are
+/// touched only on `queue`; async setup callbacks hop back onto `queue` and re-check
+/// `generation` so a late startCapture can't resurrect a torn-down audio capture.
 final class MusicSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
     var onColor: ((Int) -> Void)?
@@ -18,66 +22,106 @@ final class MusicSyncEngine: NSObject, SCStreamOutput {
     private var stream: SCStream?
     private var out: SyncOutput?
     private let queue = DispatchQueue(label: "yeelightbar.musicsync")
+    private var keepAliveTimer: DispatchSourceTimer?
+    private var kaTick = 0
+    private var generation = 0
 
-    // continuous filter state (across buffers)
+    // continuous filter state (across buffers) — touched only on `queue`
     private var lp1 = 0.0   // low-pass ~200 Hz → bass
     private var lp2 = 0.0   // low-pass ~2 kHz → bass+mid
-    // envelopes
     private var bassPeak = 0.0
     private var level = 0.0
     private var display = 0.0
     private var rBand = 0.0, gBand = 0.0, bBand = 0.0
     private var hue = 0.0
     private var lastStream = Date.distantPast
-    private var lastKeepAlive = Date.distantPast
     private var tick = 0
 
     func start(targets: [SyncTarget]) {
-        let o = SyncOutput(targets)
-        queue.async { self.out = o; o.openStream() }
+        queue.async {
+            self.generation += 1
+            let gen = self.generation
+            self.resetFilters()
+            let o = SyncOutput(targets)
+            self.out = o
+            o.openStream()
+            self.startKeepAlive()
+            self.beginCapture(gen: gen)
+        }
+    }
 
+    func stop() {
+        queue.async { self.generation += 1; self.teardown() }
+    }
+
+    private func beginCapture(gen: Int) {
         SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: true) { content, error in
-            if error != nil {
-                DispatchQueue.main.async { self.onState?(false, "Нет доступа к захвату. Разреши «Запись экрана» и перезапусти.") }
-                return
-            }
-            guard let display = content?.displays.first(where: { $0.displayID == CGMainDisplayID() }) ?? content?.displays.first else {
-                DispatchQueue.main.async { self.onState?(false, "Нет дисплея для аудио-сессии.") }
-                return
-            }
-            let config = SCStreamConfiguration()
-            config.capturesAudio = true
-            config.excludesCurrentProcessAudio = true
-            config.sampleRate = 48000
-            config.channelCount = 2
-            config.width = 2
-            config.height = 2
-            config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
+            self.queue.async {
+                guard gen == self.generation else { return }
+                if error != nil {
+                    self.teardown(); self.report(false, "Нет доступа к захвату. Разреши «Запись экрана» и перезапусти."); return
+                }
+                guard let display = content?.displays.first(where: { $0.displayID == CGMainDisplayID() }) ?? content?.displays.first else {
+                    self.teardown(); self.report(false, "Нет дисплея для аудио-сессии."); return
+                }
+                let config = SCStreamConfiguration()
+                config.capturesAudio = true
+                config.excludesCurrentProcessAudio = true
+                config.sampleRate = 48000
+                config.channelCount = 2
+                config.width = 2
+                config.height = 2
+                config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
 
-            let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
-            let stream = SCStream(filter: filter, configuration: config, delegate: nil)
-            do {
-                try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: self.queue)
-            } catch {
-                DispatchQueue.main.async { self.onState?(false, "audio output: \(error.localizedDescription)") }
-                return
-            }
-            stream.startCapture { err in
-                if let err {
-                    DispatchQueue.main.async { self.onState?(false, "Не удалось начать: \(err.localizedDescription)") }
-                } else {
-                    self.stream = stream
-                    DispatchQueue.main.async { self.onState?(true, nil) }
+                let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
+                let stream = SCStream(filter: filter, configuration: config, delegate: nil)
+                do {
+                    try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: self.queue)
+                } catch {
+                    self.teardown(); self.report(false, "audio output: \(error.localizedDescription)"); return
+                }
+                stream.startCapture { err in
+                    self.queue.async {
+                        guard gen == self.generation else { stream.stopCapture(completionHandler: { _ in }); return }
+                        if let err {
+                            self.teardown(); self.report(false, "Не удалось начать: \(err.localizedDescription)")
+                        } else {
+                            self.stream = stream
+                            self.report(true, nil)
+                        }
+                    }
                 }
             }
         }
     }
 
-    func stop() {
-        stream?.stopCapture(completionHandler: { _ in })
-        stream = nil
-        queue.async { self.out?.closeStream(); self.out = nil }
+    private func startKeepAlive() {   // on queue
+        keepAliveTimer?.cancel()
+        kaTick = 0
+        let t = DispatchSource.makeTimerSource(queue: queue)
+        t.schedule(deadline: .now() + 8, repeating: 8)
+        t.setEventHandler { [weak self] in
+            guard let self, let out = self.out else { return }
+            out.keepAlive()
+            self.kaTick += 1
+            if self.kaTick % 3 == 0 { out.ensureStreams() }
+        }
+        t.resume()
+        keepAliveTimer = t
     }
+
+    private func teardown() {   // on queue
+        keepAliveTimer?.cancel(); keepAliveTimer = nil
+        stream?.stopCapture(completionHandler: { _ in }); stream = nil
+        out?.closeStream(); out = nil
+    }
+
+    private func resetFilters() {   // on queue
+        lp1 = 0; lp2 = 0; bassPeak = 0; level = 0; display = 0
+        rBand = 0; gBand = 0; bBand = 0; hue = 0; lastStream = .distantPast; tick = 0
+    }
+
+    private func report(_ running: Bool, _ err: String?) { DispatchQueue.main.async { self.onState?(running, err) } }
 
     // MARK: - SCStreamOutput (audio)
 
@@ -139,7 +183,6 @@ final class MusicSyncEngine: NSObject, SCStreamOutput {
 
         tick += 1
         if tick % 3 == 0 { DispatchQueue.main.async { self.onColor?(rgb) } }
-        if now.timeIntervalSince(lastKeepAlive) > 8 { out.keepAlive(); lastKeepAlive = now }
     }
 
     static func hsv(_ h: Double, _ s: Double, _ v: Double) -> Int {

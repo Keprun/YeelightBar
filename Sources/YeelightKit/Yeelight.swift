@@ -60,8 +60,8 @@ public final class YeelightDevice {
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
     }
 
-    private func jsonLine(method: String, params: [Any], token: String? = nil) -> Data {
-        var obj: [String: Any] = ["id": nextId(), "method": method, "params": params]
+    private func jsonLine(method: String, params: [Any], token: String? = nil, id: Int? = nil) -> Data {
+        var obj: [String: Any] = ["id": id ?? nextId(), "method": method, "params": params]
         if let token { obj["token"] = token }
         var data = (try? JSONSerialization.data(withJSONObject: obj)) ?? Data()
         data.append(contentsOf: [0x0d, 0x0a]) // CRLF terminator required by the lamp
@@ -87,11 +87,13 @@ public final class YeelightDevice {
         }
         setRecvTimeout(fd, readTimeout)
 
-        let payload = jsonLine(method: method, params: params)
+        let reqId = nextId()
+        let payload = jsonLine(method: method, params: params, id: reqId)
         _ = payload.withUnsafeBytes { send(fd, $0.baseAddress, payload.count, 0) }
 
-        // TCP is a byte stream: accumulate until a full CRLF-terminated line,
-        // then return only the first line (the lamp may concatenate an async push).
+        // TCP is a byte stream and the lamp interleaves unsolicited {"method":"props",…}
+        // notifications with replies. Consume complete CRLF-delimited lines and return only
+        // the one whose "id" matches the request — skip async pushes / stale replies.
         func crlf(_ a: [UInt8]) -> Int? {
             guard a.count >= 2 else { return nil }
             for i in 0..<(a.count - 1) where a[i] == 0x0D && a[i + 1] == 0x0A { return i }
@@ -99,14 +101,27 @@ public final class YeelightDevice {
         }
         var acc = [UInt8]()
         var buf = [UInt8](repeating: 0, count: 4096)
-        while crlf(acc) == nil {
+        while true {
+            while let i = crlf(acc) {
+                let line = String(decoding: acc[0..<i], as: UTF8.self)
+                acc.removeFirst(i + 2)                       // drop the line and its CRLF
+                if let id = Self.replyId(line), id == reqId { return line }
+                // otherwise: a props notification or stale reply — keep reading
+            }
             let n = recv(fd, &buf, buf.count, 0)
             if n <= 0 { break }
             acc.append(contentsOf: buf[0..<n])
             if acc.count > 65536 { break }
         }
-        if let i = crlf(acc) { return String(decoding: acc[0..<i], as: UTF8.self) }
+        // No id-matched reply arrived within the timeout — best effort.
         return String(decoding: acc, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The integer "id" of a JSON-RPC line, or nil for notifications (which carry "method", no "id").
+    private static func replyId(_ line: String) -> Int? {
+        guard let d = line.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return nil }
+        return obj["id"] as? Int
     }
 
     @discardableResult

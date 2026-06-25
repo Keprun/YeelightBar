@@ -41,6 +41,9 @@ final class LampController: ObservableObject {
     private var device: YeelightDevice?
     private var ambientWork: DispatchWorkItem?
     private var lastBrightSend = Date.distantPast
+    private var pollTimer: Timer?
+    private var pollMisses = 0
+    private var pollEpoch = 0
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
     private let savedIDKey = "selectedDeviceID"
@@ -104,7 +107,10 @@ final class LampController: ObservableObject {
             let dev = YeelightDiscovery.validate(ip: ip)
             await MainActor.run {
                 self.isSearching = false
-                guard let dev else { return }
+                guard let dev else {
+                    self.connectError = "Не найдено устройство Yeelight по адресу \(ip)."
+                    return
+                }
                 if !self.devices.contains(where: { $0.ip == dev.ip }) { self.devices.append(dev) }
                 self.manualIP = ""
                 self.connect(to: dev) // manual add is an explicit choice
@@ -124,17 +130,19 @@ final class LampController: ObservableObject {
         guard let d else { return }
         stopScreenSync()
         stopMusicSync()
+        pollTimer?.invalidate(); pollTimer = nil
         selected = d
         if syncRegions[d.ip] == nil { syncRegions[d.ip] = .top }   // primary defaults to the top band
         device = YeelightDevice(ip: d.ip, tcpPort: d.port)
         if !d.id.isEmpty { UserDefaults.standard.set(d.id, forKey: savedIDKey) }
         UserDefaults.standard.set(d.ip, forKey: savedIPKey)
         connecting = true
+        connected = false        // drop stale state until the new lamp's props arrive
         connectError = nil
         refresh()
     }
 
-    func backToDevices() { connected = false }
+    func backToDevices() { pollTimer?.invalidate(); pollTimer = nil; connected = false }
 
     func refresh() {
         guard let device else { connecting = false; return }
@@ -151,6 +159,7 @@ final class LampController: ObservableObject {
                 self.connected = true
                 self.connectError = nil
                 self.apply(props)
+                self.startPollTimer()
             }
         }
     }
@@ -161,6 +170,68 @@ final class LampController: ObservableObject {
         Task.detached {
             let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power"])) ?? []
             await MainActor.run { if props.count >= 4 { self.apply(props) } }
+        }
+    }
+
+    // MARK: - Liveness: detect a lamp that went offline or changed its DHCP IP, then reconnect
+
+    private func startPollTimer() {
+        pollTimer?.invalidate()
+        pollMisses = 0
+        pollEpoch &+= 1            // invalidate any in-flight read from a previous connection
+        let t = Timer(timeInterval: 12, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tickPoll() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        pollTimer = t
+    }
+
+    /// Periodic liveness probe. Only counts failures toward "lost" when the lamp is supposed to
+    /// be ON — a deliberately powered-off lamp that also drops off WiFi must not trigger reconnect.
+    private func tickPoll() {
+        guard let device, connected else { return }
+        let expectOn = power
+        let epoch = pollEpoch
+        Task.detached {
+            let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power"])) ?? []
+            await MainActor.run {
+                guard self.connected, epoch == self.pollEpoch else { return }   // ignore stale/superseded reads
+                if props.count >= 4 {
+                    self.pollMisses = 0
+                    // Don't fight live sync: bg_rgb/bright are being driven ~20 Hz, so re-applying
+                    // them here would snap the colour/brightness controls every tick.
+                    if !(self.screenSyncOn || self.musicSyncOn) { self.apply(props) }
+                } else if expectOn {
+                    self.pollMisses += 1
+                    if self.pollMisses >= 3 { self.handleLost() }   // ~3 misses ≈ 36 s of silence
+                }
+            }
+        }
+    }
+
+    /// Lamp stopped answering (offline or DHCP IP changed) — re-discover by stable id and reconnect.
+    private func handleLost() {
+        pollTimer?.invalidate(); pollTimer = nil
+        pollMisses = 0
+        stopScreenSync(); stopMusicSync()
+        connected = false
+        connectError = "Связь с лампой потеряна — переподключаюсь…"
+        let savedID = UserDefaults.standard.string(forKey: savedIDKey) ?? ""
+        let savedIP = UserDefaults.standard.string(forKey: savedIPKey) ?? ""
+        isSearching = true
+        Task.detached {
+            let found = YeelightDiscovery.auto()
+            await MainActor.run {
+                self.isSearching = false
+                self.devices = found
+                let match = found.first(where: { !savedID.isEmpty && $0.id == savedID })
+                         ?? found.first(where: { !savedIP.isEmpty && $0.ip == savedIP })
+                if let match {
+                    self.connect(to: match)
+                } else {
+                    self.connectError = "Лампа не в сети. Нажми «Автопоиск», когда она вернётся."
+                }
+            }
         }
     }
 
@@ -233,12 +304,17 @@ final class LampController: ObservableObject {
             screenSyncStatus = "Сначала подключись к лампе."
             return
         }
+        let targets = syncTargets()
+        guard !targets.isEmpty else {
+            screenSyncStatus = "Назначь зону экрана хотя бы одной лампе."
+            return
+        }
         stopMusicSync()              // screen-sync and music-sync are mutually exclusive
         ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         screenSyncOn = true            // optimistic; reverted by onState on failure
         screenSyncStatus = "Запуск…"
         push { try $0.control("bg_set_power", ["on", "smooth", 200]) } // ensure ambient is on
-        sync.start(targets: syncTargets())
+        sync.start(targets: targets)
     }
 
     func stopScreenSync() {
@@ -262,7 +338,7 @@ final class LampController: ObservableObject {
         musicSyncOn = true
         musicSyncStatus = "Запуск…"
         push { try $0.control("bg_set_power", ["on", "smooth", 200]) } // ensure ambient is on
-        music.start(targets: syncTargets())
+        music.start(targets: musicTargets())   // music is region-agnostic — drive every device
     }
 
     func stopMusicSync() {
@@ -275,6 +351,7 @@ final class LampController: ObservableObject {
 
     // MARK: - Multi-device sync targets (each lamp samples its own screen region)
 
+    /// Screen-sync targets: only devices the user has assigned a screen region to.
     private func syncTargets() -> [SyncTarget] {
         devices.compactMap { d in
             guard let region = syncRegions[d.ip] else { return nil }
@@ -282,19 +359,32 @@ final class LampController: ObservableObject {
         }
     }
 
+    /// Music targets: every device (music is region-agnostic — the under-desk strip should pulse too).
+    private func musicTargets() -> [SyncTarget] {
+        devices.map { SyncTarget(ip: $0.ip, port: $0.port, method: streamMethod(for: $0), region: .full) }
+    }
+
     func setRegion(_ ip: String, _ region: SyncRegion?) {
         if let region { syncRegions[ip] = region } else { syncRegions.removeValue(forKey: ip) }
     }
 
     /// bg-capable lamps stream the ambient channel; plain RGB strips stream the main channel.
+    /// Scan/manual devices may carry an empty SSDP support list — fall back to the known bar model.
     private func streamMethod(for d: DiscoveredDevice) -> String {
-        d.support.contains("bg_set_rgb") ? "bg_set_rgb" : "set_rgb"
+        (d.support.contains("bg_set_rgb") || d.model == "lamp15") ? "bg_set_rgb" : "set_rgb"
     }
 
     private func restartSync() {
-        let targets = syncTargets()
-        if screenSyncOn { sync.stop(); sync.start(targets: targets) }
-        if musicSyncOn { music.stop(); music.start(targets: targets) }
+        if screenSyncOn {
+            let t = syncTargets()
+            if t.isEmpty {
+                stopScreenSync()
+                screenSyncStatus = "Назначь зону экрана хотя бы одной лампе."
+            } else {
+                sync.stop(); sync.start(targets: t)
+            }
+        }
+        if musicSyncOn { music.stop(); music.start(targets: musicTargets()) }
     }
 
     // MARK: - Effect mode (single off / screen / music selector)

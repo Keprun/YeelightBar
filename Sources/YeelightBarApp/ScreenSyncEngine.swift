@@ -9,8 +9,11 @@ enum SyncRegion: String, Hashable, CaseIterable { case top, bottom, left, right,
 struct SyncTarget { let ip: String; let port: UInt16; let method: String; let region: SyncRegion }
 
 /// Fans colour out to one or more lamps, each with its own UDP session and screen region.
+/// All device socket I/O is serialized on a private queue so it never blocks the capture
+/// thread and never races the per-device UDP fd/token.
 final class SyncOutput {
-    let targets: [(device: YeelightDevice, region: SyncRegion)]
+    private let targets: [(device: YeelightDevice, region: SyncRegion)]
+    private let io = DispatchQueue(label: "yeelightbar.syncoutput")
     init(_ ts: [SyncTarget]) {
         targets = ts.map { t in
             let d = YeelightDevice(ip: t.ip, tcpPort: t.port)
@@ -18,88 +21,138 @@ final class SyncOutput {
             return (d, t.region)
         }
     }
+    /// Distinct regions across all targets (immutable — safe to read from any thread).
     var regions: Set<SyncRegion> { Set(targets.map { $0.region }) }
-    func openStream() { targets.forEach { _ = try? $0.device.openStream() } }
-    func stream(rgb: Int) { targets.forEach { $0.device.stream(rgb: rgb) } }            // music: same to all
-    func streamRegion(_ region: SyncRegion, rgb: Int) {                                  // screen: per region
-        for t in targets where t.region == region { t.device.stream(rgb: rgb) }
+    var isEmpty: Bool { targets.isEmpty }
+
+    func openStream() { io.async { self.targets.forEach { _ = try? $0.device.openStream(timeout: 1.5) } } }
+    /// Recovery: re-acquire a token for any target whose session has dropped.
+    func ensureStreams() { io.async { self.targets.forEach { if $0.device.streamToken == nil { _ = try? $0.device.openStream(timeout: 0.8) } } } }
+    func stream(rgb: Int) { io.async { self.targets.forEach { $0.device.stream(rgb: rgb) } } }            // music: same to all
+    func streamRegion(_ region: SyncRegion, rgb: Int) {                                                     // screen: per region
+        io.async { for t in self.targets where t.region == region { t.device.stream(rgb: rgb) } }
     }
-    func keepAlive() { targets.forEach { $0.device.keepAlive() } }
-    func closeStream() { targets.forEach { $0.device.closeStream() } }
+    func keepAlive() { io.async { self.targets.forEach { $0.device.keepAlive() } } }
+    func closeStream() { io.async { self.targets.forEach { $0.device.closeStream() } } }
 }
 
 /// Ambilight engine: captures the display via ScreenCaptureKit and streams the
 /// representative colour of each target's screen region to that target's lamp.
+///
+/// Lifecycle invariant: `stream`, `out`, `frameCount`, `smoothedByRegion`, `keepAliveTimer`
+/// and `generation` are touched ONLY on `queue`. start()/stop() enqueue onto `queue`, the
+/// SCStream sample handler runs on `queue`, and every async setup callback hops back onto
+/// `queue` and re-checks `generation` so a late callback can't resurrect a torn-down capture.
 final class ScreenSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
     var onColor: ((Int) -> Void)?
     var onSource: ((Int, Int) -> Void)?
+    var onLuma: ((Double) -> Void)?
     var bandFraction: Double = 0.25
     var smoothing: Double = 0.35
     var saturation: Double = 1.25
-    var onLuma: ((Double) -> Void)?
 
     private var stream: SCStream?
     private var out: SyncOutput?
     private let queue = DispatchQueue(label: "yeelightbar.screensync")
     private var smoothedByRegion: [SyncRegion: (r: Double, g: Double, b: Double)] = [:]
-    private var lastKeepAlive = Date.distantPast
+    private var keepAliveTimer: DispatchSourceTimer?
+    private var kaTick = 0
     private var frameCount = 0
+    private var generation = 0   // bumped on every start()/stop(); guards async setup callbacks
 
     func start(targets: [SyncTarget]) {
-        frameCount = 0
-        smoothedByRegion = [:]
-        let o = SyncOutput(targets)
-        queue.async { self.out = o; o.openStream() }
+        queue.async {
+            self.generation += 1
+            let gen = self.generation
+            self.frameCount = 0
+            self.smoothedByRegion = [:]
+            let o = SyncOutput(targets)
+            self.out = o
+            o.openStream()
+            self.startKeepAlive()
+            self.beginCapture(gen: gen)
+        }
+    }
 
+    func stop() {
+        queue.async { self.generation += 1; self.teardown() }
+    }
+
+    // MARK: - Capture setup (all callbacks hop back onto `queue` and re-check generation)
+
+    private func beginCapture(gen: Int) {
         SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: true) { content, error in
-            if error != nil {
-                DispatchQueue.main.async {
-                    self.onState?(false, "Нет доступа к захвату экрана. Разреши «Запись экрана» и перезапусти приложение.")
+            self.queue.async {
+                guard gen == self.generation else { return }   // superseded by stop()/restart
+                if error != nil {
+                    self.teardown()
+                    self.report(false, "Нет доступа к захвату экрана. Разреши «Запись экрана» и перезапусти приложение.")
+                    return
                 }
-                return
-            }
-            guard let display = content?.displays.first(where: { $0.displayID == CGMainDisplayID() }) ?? content?.displays.first else {
-                DispatchQueue.main.async { self.onState?(false, "Не найден дисплей для захвата.") }
-                return
-            }
-            DispatchQueue.main.async { self.onSource?(display.width, display.height) }
+                guard let display = content?.displays.first(where: { $0.displayID == CGMainDisplayID() }) ?? content?.displays.first else {
+                    self.teardown(); self.report(false, "Не найден дисплей для захвата."); return
+                }
+                self.reportSource(display.width, display.height)
 
-            let capW = 128
-            let aspect = display.width > 0 ? Double(display.height) / Double(display.width) : 0.5625
-            let capH = max(8, Int((Double(capW) * aspect).rounded()))
-            let config = SCStreamConfiguration()
-            config.width = capW
-            config.height = capH
-            config.minimumFrameInterval = CMTime(value: 1, timescale: 20)
-            config.pixelFormat = kCVPixelFormatType_32BGRA
-            config.queueDepth = 3
-            config.showsCursor = false
+                let capW = 128
+                let aspect = display.width > 0 ? Double(display.height) / Double(display.width) : 0.5625
+                let capH = max(8, Int((Double(capW) * aspect).rounded()))
+                let config = SCStreamConfiguration()
+                config.width = capW
+                config.height = capH
+                config.minimumFrameInterval = CMTime(value: 1, timescale: 20)
+                config.pixelFormat = kCVPixelFormatType_32BGRA
+                config.queueDepth = 3
+                config.showsCursor = false
 
-            let stream = SCStream(filter: SCContentFilter(display: display, excludingApplications: [], exceptingWindows: []),
-                                  configuration: config, delegate: nil)
-            do {
-                try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: self.queue)
-            } catch {
-                DispatchQueue.main.async { self.onState?(false, "addStreamOutput: \(error.localizedDescription)") }
-                return
-            }
-            stream.startCapture { err in
-                if let err {
-                    DispatchQueue.main.async { self.onState?(false, "Не удалось начать захват: \(err.localizedDescription).") }
-                } else {
-                    self.stream = stream
-                    DispatchQueue.main.async { self.onState?(true, nil) }
+                let stream = SCStream(filter: SCContentFilter(display: display, excludingApplications: [], exceptingWindows: []),
+                                      configuration: config, delegate: nil)
+                do {
+                    try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: self.queue)
+                } catch {
+                    self.teardown(); self.report(false, "addStreamOutput: \(error.localizedDescription)"); return
+                }
+                stream.startCapture { err in
+                    self.queue.async {
+                        guard gen == self.generation else { stream.stopCapture(completionHandler: { _ in }); return }
+                        if let err {
+                            self.teardown(); self.report(false, "Не удалось начать захват: \(err.localizedDescription).")
+                        } else {
+                            self.stream = stream
+                            self.report(true, nil)
+                        }
+                    }
                 }
             }
         }
     }
 
-    func stop() {
-        stream?.stopCapture(completionHandler: { _ in })
-        stream = nil
-        queue.async { self.out?.closeStream(); self.out = nil }
+    /// Independent keep-alive + session-recovery timer (NOT gated on frame arrival, so a
+    /// static screen — which makes SCK stop delivering frames — can't let the session expire).
+    private func startKeepAlive() {   // on queue
+        keepAliveTimer?.cancel()
+        kaTick = 0
+        let t = DispatchSource.makeTimerSource(queue: queue)
+        t.schedule(deadline: .now() + 8, repeating: 8)
+        t.setEventHandler { [weak self] in
+            guard let self, let out = self.out else { return }
+            out.keepAlive()
+            self.kaTick += 1
+            if self.kaTick % 3 == 0 { out.ensureStreams() }   // re-open dropped sessions ~every 24 s
+        }
+        t.resume()
+        keepAliveTimer = t
     }
+
+    private func teardown() {   // on queue
+        keepAliveTimer?.cancel(); keepAliveTimer = nil
+        stream?.stopCapture(completionHandler: { _ in }); stream = nil
+        out?.closeStream(); out = nil
+    }
+
+    private func report(_ running: Bool, _ err: String?) { DispatchQueue.main.async { self.onState?(running, err) } }
+    private func reportSource(_ w: Int, _ h: Int) { DispatchQueue.main.async { self.onSource?(w, h) } }
 
     // MARK: - SCStreamOutput
 
@@ -135,7 +188,6 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
         frameCount += 1
         if frameCount % 3 == 0 { let p = previewRGB; DispatchQueue.main.async { self.onColor?(p) } }
         if frameCount % 10 == 0, lumaFollow >= 0 { let l = lumaFollow; DispatchQueue.main.async { self.onLuma?(l) } }
-        if Date().timeIntervalSince(lastKeepAlive) > 8 { out.keepAlive(); lastKeepAlive = Date() }
     }
 
     private static func regionAverage(_ ptr: UnsafePointer<UInt8>, _ w: Int, _ h: Int, _ bpr: Int,
