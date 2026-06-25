@@ -2,215 +2,258 @@ import SwiftUI
 import AppKit
 import YeelightKit
 
-/// Full resizable window — the spacious, clearly-labelled control surface.
+enum AppSection: String, CaseIterable, Identifiable, Hashable {
+    case control, ambient, effects, scenes, devices
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .control: return "Свет"
+        case .ambient: return "Подсветка"
+        case .effects: return "Эффекты"
+        case .scenes: return "Сцены"
+        case .devices: return "Устройства"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .control: return "sun.max.fill"
+        case .ambient: return "paintpalette.fill"
+        case .effects: return "sparkles.tv.fill"
+        case .scenes: return "theatermasks.fill"
+        case .devices: return "lightbulb.fill"
+        }
+    }
+}
+
+/// Full native window — sidebar + spacious detail pane.
 struct FullView: View {
     @ObservedObject var lamp: LampController
+    @State private var section: AppSection = .control
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
-                if lamp.connected {
-                    whiteCard
-                    ambientCard
-                    effectCard
-                    scenesCard
-                } else {
-                    finderCard
+        NavigationSplitView {
+            VStack(spacing: 0) {
+                sidebarHeader.padding(14)
+                Divider()
+                List(AppSection.allCases, selection: $section) { s in
+                    Label(s.title, systemImage: s.icon).tag(s)
                 }
+                .listStyle(.sidebar)
             }
-            .padding(20)
-            .frame(width: 480, alignment: .leading)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 250)
+        } detail: {
+            ScrollView {
+                detail
+                    .padding(28)
+                    .frame(maxWidth: 640, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .navigationTitle(section.title)
         }
-        .frame(minWidth: 480, idealWidth: 480, minHeight: 560, idealHeight: 760)
+        .frame(minWidth: 820, idealWidth: 880, minHeight: 580, idealHeight: 680)
         .onAppear { lamp.refreshScreenPermission() }
     }
 
-    // MARK: header
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "lightbulb.fill").font(.title).foregroundStyle(.yellow)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("YeelightBar").font(.title2).bold()
-                Text(lamp.connected ? "\(name(lamp.selected)) · \(lamp.selected?.ip ?? "")" : "не подключено")
-                    .font(.callout).foregroundStyle(.secondary)
+    private var sidebarHeader: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lightbulb.fill").font(.title2).foregroundStyle(.yellow)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(lamp.connected ? name(lamp.selected) : "YeelightBar").font(.headline).lineLimit(1)
+                Text(lamp.connected ? (lamp.selected?.ip ?? "") : "не подключено")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if lamp.connected {
-                Menu {
-                    ForEach(lamp.devices, id: \.ip) { d in
-                        Button { lamp.connect(to: d) } label: {
-                            d.ip == lamp.selected?.ip ? Label("\(name(d)) · \(d.ip)", systemImage: "checkmark")
-                                                      : Label("\(name(d)) · \(d.ip)", systemImage: "lightbulb")
-                        }
-                    }
-                    Divider()
-                    Button("Найти заново…") { lamp.backToDevices(); lamp.autoSearch() }
-                } label: { Image(systemName: "rectangle.2.swap") }
-                .menuStyle(.borderlessButton).fixedSize()
-
                 Toggle("", isOn: Binding(get: { lamp.power }, set: { _ in lamp.togglePower() }))
                     .toggleStyle(.switch).labelsHidden()
             }
         }
     }
 
-    // MARK: white
-
-    private var whiteCard: some View {
-        GroupBox("Белый свет (передняя панель)") {
-            VStack(alignment: .leading, spacing: 14) {
-                slider("Яркость", $lamp.brightness, 1...100, { "\(Int($0))%" }) { lamp.pushBrightness() }
-                slider("Тёплость", $lamp.colorTempK, 2700...6500, { "\(Int($0)) K" }) { lamp.pushColorTemp() }
-            }.padding(8)
+    @ViewBuilder private var detail: some View {
+        if !lamp.connected && section != .devices {
+            notConnected
+        } else {
+            switch section {
+            case .control: controlSection
+            case .ambient: ambientSection
+            case .effects: effectsSection
+            case .scenes: scenesSection
+            case .devices: devicesSection
+            }
         }
     }
 
-    // MARK: ambient
-
-    private var ambientCard: some View {
-        GroupBox("Подсветка (ambient)") {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Подсветка включена").font(.callout)
-                    Spacer()
-                    RoundedRectangle(cornerRadius: 5).fill(lamp.ambientColor).frame(width: 28, height: 28)
-                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(.secondary.opacity(0.3)))
-                    Toggle("", isOn: Binding(get: { lamp.ambientOn }, set: { lamp.setAmbientPower($0) }))
-                        .toggleStyle(.switch).labelsHidden()
-                }
-                Text("Цвет — кликни/веди по полосе или выбери пресет").font(.caption).foregroundStyle(.secondary)
-                GeometryReader { geo in
-                    LinearGradient(gradient: Gradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red]),
-                                   startPoint: .leading, endPoint: .trailing)
-                        .gesture(DragGesture(minimumDistance: 0).onChanged { v in
-                            lamp.setAmbient(Color(hue: max(0, min(1, v.location.x / geo.size.width)), saturation: 0.9, brightness: 1))
-                        })
-                }
-                .frame(height: 24).clipShape(RoundedRectangle(cornerRadius: 12))
-                HStack(spacing: 12) {
-                    ForEach(presets, id: \.self) { c in
-                        RoundedRectangle(cornerRadius: 7).fill(c).frame(width: 34, height: 34)
-                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(.secondary.opacity(0.25)))
-                            .onTapGesture { lamp.setAmbient(c) }
-                    }
-                    Spacer()
-                }
-            }.padding(8)
+    private var notConnected: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Лампа не подключена").font(.title3).bold()
+            Text("Открой раздел «Устройства», найди лампу и подключись.").foregroundStyle(.secondary)
+            Button("Перейти к устройствам") { section = .devices }.buttonStyle(.borderedProminent)
         }
     }
 
-    // MARK: effect
+    // MARK: sections
 
-    private var effectCard: some View {
-        GroupBox("Эффект подсветки") {
-            VStack(alignment: .leading, spacing: 14) {
-                Picker("", selection: Binding(get: { lamp.syncMode }, set: { lamp.setSyncMode($0) })) {
-                    Text("Выкл").tag(SyncMode.off)
-                    Text("Экран").tag(SyncMode.screen)
-                    Text("Музыка").tag(SyncMode.music)
-                }.pickerStyle(.segmented).labelsHidden()
+    private var controlSection: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Toggle(isOn: Binding(get: { lamp.power }, set: { _ in lamp.togglePower() })) {
+                Text("Питание лампы").font(.title3)
+            }.toggleStyle(.switch)
+            GroupBox("Передний белый свет") {
+                VStack(alignment: .leading, spacing: 18) {
+                    slider("Яркость", $lamp.brightness, 1...100, { "\(Int($0))%" }) { lamp.pushBrightness() }
+                    slider("Тёплость", $lamp.colorTempK, 2700...6500, { "\(Int($0)) K" }) { lamp.pushColorTemp() }
+                }.padding(10)
+            }
+        }
+    }
 
-                if !lamp.screenHasPermission && lamp.syncMode != .off {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                        Text("Нужно разрешение «Запись экрана»").font(.callout)
+    private var ambientSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Toggle(isOn: Binding(get: { lamp.ambientOn }, set: { lamp.setAmbientPower($0) })) {
+                Text("Подсветка включена").font(.title3)
+            }.toggleStyle(.switch)
+            GroupBox("Цвет подсветки") {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Текущий цвет").font(.callout).foregroundStyle(.secondary)
                         Spacer()
-                        Button("Открыть настройки") { lamp.openScreenSettings() }
+                        RoundedRectangle(cornerRadius: 6).fill(lamp.ambientColor).frame(width: 40, height: 40)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary.opacity(0.3)))
                     }
-                }
-                if let s = lamp.screenSyncStatus ?? lamp.musicSyncStatus {
-                    Text(s).font(.callout)
-                        .foregroundStyle(s.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
-                }
-
-                if lamp.syncMode == .screen {
-                    Divider()
-                    Text("Зона экрана для каждой лампы").font(.callout).bold()
-                    ForEach(lamp.devices, id: \.ip) { d in
-                        HStack {
-                            Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb")
-                            Text(name(d)).font(.callout)
-                            Text(d.ip).font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Menu(zoneLabel(lamp.syncRegions[d.ip])) {
-                                Button("Выкл") { lamp.setRegion(d.ip, nil) }
-                                Button("Верх") { lamp.setRegion(d.ip, .top) }
-                                Button("Низ") { lamp.setRegion(d.ip, .bottom) }
-                                Button("Лево") { lamp.setRegion(d.ip, .left) }
-                                Button("Право") { lamp.setRegion(d.ip, .right) }
-                                Button("Весь экран") { lamp.setRegion(d.ip, .full) }
-                            }.fixedSize()
+                    GeometryReader { geo in
+                        LinearGradient(gradient: Gradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red]),
+                                       startPoint: .leading, endPoint: .trailing)
+                            .gesture(DragGesture(minimumDistance: 0).onChanged { v in
+                                lamp.setAmbient(Color(hue: max(0, min(1, v.location.x / geo.size.width)), saturation: 0.9, brightness: 1))
+                            })
+                    }.frame(height: 28).clipShape(RoundedRectangle(cornerRadius: 14))
+                    HStack(spacing: 14) {
+                        ForEach(presets, id: \.self) { c in
+                            RoundedRectangle(cornerRadius: 8).fill(c).frame(width: 40, height: 40)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.25)))
+                                .onTapGesture { lamp.setAmbient(c) }
                         }
+                        Spacer()
                     }
-                    Divider()
-                    slider("Размер зоны", $lamp.bandFraction, 0.1...0.6, { "\(Int($0 * 100))%" })
-                    Toggle("Яркость следует за яркостью сцены", isOn: $lamp.brightnessFollow)
-                    slider("Плавность", $lamp.syncSmoothing, 0.1...0.8, { "\(Int($0 * 100))%" })
-                    slider("Насыщенность", $lamp.syncSaturation, 1.0...2.0, { String(format: "%.1f×", $0) })
-                }
-                if lamp.syncMode == .music {
-                    Divider()
-                    Picker("Стиль", selection: Binding(get: { lamp.musicStyle }, set: { lamp.musicStyle = $0 })) {
-                        Text("Бит (бас)").tag(MusicStyle.beat)
-                        Text("Спектр").tag(MusicStyle.spectrum)
-                    }.pickerStyle(.segmented)
-                    Text("Бит — пульс под бас/кик. Спектр — бас=красный, мид=зелёный, верха=синий.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    slider("Чувствительность", $lamp.musicSensitivity, 2...8, { String(format: "%.1f", $0) })
-                }
-            }.padding(8)
+                }.padding(10)
+            }
         }
     }
 
-    // MARK: scenes
+    private var effectsSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Picker("Эффект", selection: Binding(get: { lamp.syncMode }, set: { lamp.setSyncMode($0) })) {
+                Text("Выкл").tag(SyncMode.off)
+                Text("Экран").tag(SyncMode.screen)
+                Text("Музыка").tag(SyncMode.music)
+            }.pickerStyle(.segmented)
 
-    private var scenesCard: some View {
-        GroupBox("Сцены") {
-            HStack(spacing: 10) {
+            if !lamp.screenHasPermission && lamp.syncMode != .off {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text("Нужно разрешение «Запись экрана» (после выдачи перезапусти приложение)").font(.callout)
+                    Spacer()
+                    Button("Открыть") { lamp.openScreenSettings() }
+                }
+            }
+            if let s = lamp.screenSyncStatus ?? lamp.musicSyncStatus {
+                Text(s).font(.callout).foregroundStyle(s.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+            }
+
+            if lamp.syncMode == .screen {
+                GroupBox("Зона экрана для каждой лампы") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(lamp.devices, id: \.ip) { d in
+                            HStack {
+                                Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb")
+                                Text(name(d)).font(.callout)
+                                Text(d.ip).font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                Menu(zoneLabel(lamp.syncRegions[d.ip])) {
+                                    Button("Выкл") { lamp.setRegion(d.ip, nil) }
+                                    Button("Верх") { lamp.setRegion(d.ip, .top) }
+                                    Button("Низ") { lamp.setRegion(d.ip, .bottom) }
+                                    Button("Лево") { lamp.setRegion(d.ip, .left) }
+                                    Button("Право") { lamp.setRegion(d.ip, .right) }
+                                    Button("Весь экран") { lamp.setRegion(d.ip, .full) }
+                                }.fixedSize()
+                            }
+                        }
+                    }.padding(10)
+                }
+                GroupBox("Настройка") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        slider("Размер зоны", $lamp.bandFraction, 0.1...0.6, { "\(Int($0 * 100))%" })
+                        Toggle("Яркость следует за яркостью сцены", isOn: $lamp.brightnessFollow)
+                        slider("Плавность", $lamp.syncSmoothing, 0.1...0.8, { "\(Int($0 * 100))%" })
+                        slider("Насыщенность", $lamp.syncSaturation, 1.0...2.0, { String(format: "%.1f×", $0) })
+                    }.padding(10)
+                }
+            }
+            if lamp.syncMode == .music {
+                GroupBox("Музыка (системный звук)") {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Picker("Стиль", selection: Binding(get: { lamp.musicStyle }, set: { lamp.musicStyle = $0 })) {
+                            Text("Бит (бас/кик)").tag(MusicStyle.beat)
+                            Text("Спектр (RGB)").tag(MusicStyle.spectrum)
+                        }.pickerStyle(.segmented)
+                        slider("Чувствительность", $lamp.musicSensitivity, 2...8, { String(format: "%.1f", $0) })
+                        Text("Бит — пульс под бас. Спектр — бас=красный, мид=зелёный, верха=синий.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.padding(10)
+                }
+            }
+        }
+    }
+
+    private var scenesSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Готовые пресеты белого света").foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
                 sceneBtn("Reading", "book", 4000, 100)
                 sceneBtn("Relax", "cup.and.saucer", 2700, 40)
                 sceneBtn("Focus", "target", 5000, 100)
                 sceneBtn("Movie", "film", 2700, 15)
-                Spacer()
-            }.padding(8)
+            }
         }
     }
 
-    // MARK: finder
-
-    private var finderCard: some View {
-        GroupBox("Найти лампу") {
-            VStack(alignment: .leading, spacing: 12) {
-                Button { lamp.autoSearch() } label: {
-                    HStack {
-                        if lamp.isSearching { ProgressView().controlSize(.small) } else { Image(systemName: "antenna.radiowaves.left.and.right") }
-                        Text(lamp.isSearching ? "Идёт поиск…" : "Автопоиск ламп в сети")
-                    }.frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).disabled(lamp.isSearching)
-
-                if let err = lamp.connectError {
-                    Text(err).font(.callout).foregroundStyle(.red)
-                }
-                ForEach(lamp.devices, id: \.ip) { d in
-                    HStack {
-                        Button { lamp.connect(to: d) } label: {
-                            HStack {
-                                Image(systemName: "lightbulb")
-                                VStack(alignment: .leading) { Text(name(d)); Text(d.ip).font(.caption).foregroundStyle(.secondary) }
-                                Spacer()
-                            }.frame(maxWidth: .infinity)
-                        }.buttonStyle(.bordered)
-                        Button { lamp.identify(d) } label: { Image(systemName: "wand.and.rays") }.buttonStyle(.bordered).help("Мигнуть для опознания")
-                    }
-                }
-                Divider()
+    private var devicesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button { lamp.autoSearch() } label: {
                 HStack {
-                    TextField("IP вручную (192.168.1.x)", text: $lamp.manualIP).textFieldStyle(.roundedBorder).onSubmit { lamp.addManualIP() }
+                    if lamp.isSearching { ProgressView().controlSize(.small) } else { Image(systemName: "antenna.radiowaves.left.and.right") }
+                    Text(lamp.isSearching ? "Идёт поиск…" : "Автопоиск ламп в сети")
+                }.frame(maxWidth: .infinity)
+            }.buttonStyle(.borderedProminent).controlSize(.large).disabled(lamp.isSearching)
+
+            if let err = lamp.connectError { Text(err).font(.callout).foregroundStyle(.red) }
+
+            GroupBox("Найденные лампы") {
+                VStack(spacing: 8) {
+                    if lamp.devices.isEmpty {
+                        Text("Пока ничего — нажми «Автопоиск».").foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    ForEach(lamp.devices, id: \.ip) { d in
+                        HStack {
+                            Image(systemName: d.ip == lamp.selected?.ip ? "checkmark.circle.fill" : "lightbulb")
+                                .foregroundStyle(d.ip == lamp.selected?.ip ? Color.green : .secondary)
+                            VStack(alignment: .leading) { Text(name(d)); Text(d.ip).font(.caption).foregroundStyle(.secondary) }
+                            Spacer()
+                            Button("Мигнуть") { lamp.identify(d) }.controlSize(.small)
+                            Button(d.ip == lamp.selected?.ip ? "Активна" : "Подключить") { lamp.connect(to: d) }
+                                .controlSize(.small).disabled(d.ip == lamp.selected?.ip && lamp.connected)
+                        }.padding(.vertical, 2)
+                    }
+                }.padding(10)
+            }
+            GroupBox("Добавить вручную по IP") {
+                HStack {
+                    TextField("192.168.1.x", text: $lamp.manualIP).textFieldStyle(.roundedBorder).onSubmit { lamp.addManualIP() }
                     Button("Добавить") { lamp.addManualIP() }.disabled(lamp.manualIP.isEmpty)
-                }
-            }.padding(8)
+                }.padding(10)
+            }
         }
     }
 
@@ -218,7 +261,7 @@ struct FullView: View {
 
     private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>,
                         _ display: @escaping (Double) -> String, _ commit: @escaping () -> Void = {}) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text(label).font(.callout)
                 Spacer()
@@ -230,8 +273,8 @@ struct FullView: View {
 
     private func sceneBtn(_ title: String, _ icon: String, _ ct: Int, _ b: Int) -> some View {
         Button { lamp.applyScene(ct: ct, bright: b) } label: {
-            HStack(spacing: 5) { Image(systemName: icon); Text(title) }
-        }.buttonStyle(.bordered)
+            HStack { Image(systemName: icon); Text(title); Spacer() }.padding(.vertical, 6)
+        }.buttonStyle(.bordered).controlSize(.large)
     }
 
     private func name(_ d: DiscoveredDevice?) -> String {

@@ -3,3 +3,7 @@ build/
 .DS_Store
 *.swiftpm
 .netrc
+
+# Xcode user-specific
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/

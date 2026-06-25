@@ -1,0 +1,345 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2B88DC38991D798CC1F55015 /* YeelightBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1591476A0BC05B4FB3360476 /* YeelightBarApp.swift */; };
+		4F2B9C913EA052C0D4AC7D1C /* MusicSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68ABF572F1DDEE5477E7FBC7 /* MusicSyncEngine.swift */; };
+		54297C290BE5AF5EDDB396D5 /* ScreenSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C3DA80520E8D89953EBCB4 /* ScreenSyncEngine.swift */; };
+		74E7E52D8D7FAEE288C002D3 /* MenuPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2625F816C24C22DD627A7AE3 /* MenuPanelView.swift */; };
+		8A92F920775356C64FB7D60B /* Scan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140AFBE3D38F4CAB72DB7A10 /* Scan.swift */; };
+		C19C6DC251A55A6137AFBD45 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F791BE3DACA0C9B167C9C8E4 /* Discovery.swift */; };
+		EDFC7343EA3D090F5BD2B0BD /* Yeelight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077D246CE0F473912329C744 /* Yeelight.swift */; };
+		EEBB73609BF9840BB1348283 /* FullView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0D679254E1A7F5201EBBEA /* FullView.swift */; };
+		F7ADE7558B8C9A2BF5302CDB /* LampController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CCCAB35F266ACDFE82B743 /* LampController.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		077D246CE0F473912329C744 /* Yeelight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Yeelight.swift; sourceTree = "<group>"; };
+		140AFBE3D38F4CAB72DB7A10 /* Scan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scan.swift; sourceTree = "<group>"; };
+		1591476A0BC05B4FB3360476 /* YeelightBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YeelightBarApp.swift; sourceTree = "<group>"; };
+		2625F816C24C22DD627A7AE3 /* MenuPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuPanelView.swift; sourceTree = "<group>"; };
+		3DF510C193C2732A4F056925 /* YeelightBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YeelightBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		52CCCAB35F266ACDFE82B743 /* LampController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LampController.swift; sourceTree = "<group>"; };
+		68ABF572F1DDEE5477E7FBC7 /* MusicSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSyncEngine.swift; sourceTree = "<group>"; };
+		A0C3DA80520E8D89953EBCB4 /* ScreenSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSyncEngine.swift; sourceTree = "<group>"; };
+		F791BE3DACA0C9B167C9C8E4 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
+		FC0D679254E1A7F5201EBBEA /* FullView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		143755B52C804D2E1209224B /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				6BB0838C3D6DB4192F5832C9 /* YeelightBarApp */,
+				3EF09986D70D215B92D40901 /* YeelightKit */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		3EF09986D70D215B92D40901 /* YeelightKit */ = {
+			isa = PBXGroup;
+			children = (
+				F791BE3DACA0C9B167C9C8E4 /* Discovery.swift */,
+				140AFBE3D38F4CAB72DB7A10 /* Scan.swift */,
+				077D246CE0F473912329C744 /* Yeelight.swift */,
+			);
+			path = YeelightKit;
+			sourceTree = "<group>";
+		};
+		6BB0838C3D6DB4192F5832C9 /* YeelightBarApp */ = {
+			isa = PBXGroup;
+			children = (
+				FC0D679254E1A7F5201EBBEA /* FullView.swift */,
+				52CCCAB35F266ACDFE82B743 /* LampController.swift */,
+				2625F816C24C22DD627A7AE3 /* MenuPanelView.swift */,
+				68ABF572F1DDEE5477E7FBC7 /* MusicSyncEngine.swift */,
+				A0C3DA80520E8D89953EBCB4 /* ScreenSyncEngine.swift */,
+				1591476A0BC05B4FB3360476 /* YeelightBarApp.swift */,
+			);
+			path = YeelightBarApp;
+			sourceTree = "<group>";
+		};
+		C8AD25C1AC70339060910CBF = {
+			isa = PBXGroup;
+			children = (
+				143755B52C804D2E1209224B /* Sources */,
+				FE85D72C9CF050538ED0B18F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FE85D72C9CF050538ED0B18F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3DF510C193C2732A4F056925 /* YeelightBar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F91C9AE1EBFED0DD9D67DB09 /* YeelightBar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 172EC0DEA14AD68E55F5E50A /* Build configuration list for PBXNativeTarget "YeelightBar" */;
+			buildPhases = (
+				25BE19301105AA559375A200 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YeelightBar;
+			packageProductDependencies = (
+			);
+			productName = YeelightBar;
+			productReference = 3DF510C193C2732A4F056925 /* YeelightBar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		47F9C40B422CCDA39F067A69 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					F91C9AE1EBFED0DD9D67DB09 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = B6EFCDC454B9E132EEAD019B /* Build configuration list for PBXProject "YeelightBar" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C8AD25C1AC70339060910CBF;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FE85D72C9CF050538ED0B18F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F91C9AE1EBFED0DD9D67DB09 /* YeelightBar */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		25BE19301105AA559375A200 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C19C6DC251A55A6137AFBD45 /* Discovery.swift in Sources */,
+				EEBB73609BF9840BB1348283 /* FullView.swift in Sources */,
+				F7ADE7558B8C9A2BF5302CDB /* LampController.swift in Sources */,
+				74E7E52D8D7FAEE288C002D3 /* MenuPanelView.swift in Sources */,
+				4F2B9C913EA052C0D4AC7D1C /* MusicSyncEngine.swift in Sources */,
+				8A92F920775356C64FB7D60B /* Scan.swift in Sources */,
+				54297C290BE5AF5EDDB396D5 /* ScreenSyncEngine.swift in Sources */,
+				EDFC7343EA3D090F5BD2B0BD /* Yeelight.swift in Sources */,
+				2B88DC38991D798CC1F55015 /* YeelightBarApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5409164E8C5ECAF9D96936E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = xcode/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vfi.yeelightbar;
+				PRODUCT_NAME = YeelightBar;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		6E32D077B9A5CD60AE9AD360 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = xcode/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vfi.yeelightbar;
+				PRODUCT_NAME = YeelightBar;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C0A2EBE0DB38D9AFC21E1FA1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CAD0319D8F294A377DAD210A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		172EC0DEA14AD68E55F5E50A /* Build configuration list for PBXNativeTarget "YeelightBar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5409164E8C5ECAF9D96936E3 /* Debug */,
+				6E32D077B9A5CD60AE9AD360 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B6EFCDC454B9E132EEAD019B /* Build configuration list for PBXProject "YeelightBar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CAD0319D8F294A377DAD210A /* Debug */,
+				C0A2EBE0DB38D9AFC21E1FA1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 47F9C40B422CCDA39F067A69 /* Project object */;
+}
