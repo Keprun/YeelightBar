@@ -3,12 +3,11 @@ import AppKit
 import YeelightKit
 
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
-    case control, ambient, effects, scenes, devices
+    case control, effects, scenes, devices
     var id: String { rawValue }
     var title: String {
         switch self {
         case .control: return "Свет"
-        case .ambient: return "Подсветка"
         case .effects: return "Эффекты"
         case .scenes: return "Сцены"
         case .devices: return "Устройства"
@@ -17,7 +16,6 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     var icon: String {
         switch self {
         case .control: return "sun.max.fill"
-        case .ambient: return "paintpalette.fill"
         case .effects: return "sparkles.tv.fill"
         case .scenes: return "theatermasks.fill"
         case .devices: return "lightbulb.fill"
@@ -76,8 +74,7 @@ struct FullView: View {
             notConnected
         } else {
             switch section {
-            case .control: controlSection
-            case .ambient: ambientSection
+            case .control: lightSection
             case .effects: effectsSection
             case .scenes: scenesSection
             case .devices: devicesSection
@@ -95,12 +92,20 @@ struct FullView: View {
 
     // MARK: sections
 
+    /// One tab combining the front white and the ambient colour, so there's no jumping between tabs.
+    private var lightSection: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            controlSection
+            ambientSection
+        }
+    }
+
     private var controlSection: some View {
         VStack(alignment: .leading, spacing: 22) {
             Toggle(isOn: Binding(get: { lamp.power }, set: { lamp.setFrontPower($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Передний свет").font(.title3)
-                    Text("белый. Подсветку выключай отдельно во вкладке «Подсветка»")
+                    Text("белый свет на монитор — независим от подсветки ниже")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }.toggleStyle(.switch)
