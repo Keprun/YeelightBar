@@ -46,6 +46,7 @@ final class SyncOutput {
 final class ScreenSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
     var onColor: ((Int) -> Void)?
+    var onRegionColors: (([SyncRegion: Int]) -> Void)?
     var onSource: ((Int, Int) -> Void)?
     var onLuma: ((Double) -> Void)?
     var bandFraction: Double = 0.25
@@ -170,6 +171,7 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
 
         var previewRGB = 0
         var lumaFollow = -1.0
+        var colors: [SyncRegion: Int] = [:]
         for region in out.regions {
             let (rawR, rawG, rawB) = Self.regionAverage(ptr, w, h, bpr, region: region, band: bandFraction)
             let avg = (rawR + rawG + rawB) / 3, boost = saturation
@@ -180,13 +182,17 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             s.r += (r - s.r) * k; s.g += (g - s.g) * k; s.b += (b - s.b) * k
             smoothedByRegion[region] = s
             let rgb = (Int(s.r) << 16) | (Int(s.g) << 8) | Int(s.b)
+            colors[region] = rgb
             out.streamRegion(region, rgb: rgb)
             if region == .top || previewRGB == 0 { previewRGB = rgb }
             if region == .top || lumaFollow < 0 { lumaFollow = (0.299 * rawR + 0.587 * rawG + 0.114 * rawB) / 255 }
         }
 
         frameCount += 1
-        if frameCount % 3 == 0 { let p = previewRGB; DispatchQueue.main.async { self.onColor?(p) } }
+        if frameCount % 3 == 0 {
+            let p = previewRGB, c = colors
+            DispatchQueue.main.async { self.onColor?(p); self.onRegionColors?(c) }
+        }
         if frameCount % 10 == 0, lumaFollow >= 0 { let l = lumaFollow; DispatchQueue.main.async { self.onLuma?(l) } }
     }
 

@@ -64,8 +64,9 @@ struct FullView: View {
             }
             Spacer()
             if lamp.connected {
-                Toggle("", isOn: Binding(get: { lamp.power }, set: { _ in lamp.togglePower() }))
+                Toggle("", isOn: Binding(get: { lamp.masterOn }, set: { _ in lamp.togglePower() }))
                     .toggleStyle(.switch).labelsHidden()
+                    .help("Вся лампа: передний свет + подсветка")
             }
         }
     }
@@ -96,8 +97,12 @@ struct FullView: View {
 
     private var controlSection: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Toggle(isOn: Binding(get: { lamp.power }, set: { _ in lamp.togglePower() })) {
-                Text("Питание лампы").font(.title3)
+            Toggle(isOn: Binding(get: { lamp.power }, set: { lamp.setFrontPower($0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Передний свет").font(.title3)
+                    Text("белый. Подсветку выключай отдельно во вкладке «Подсветка»")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }.toggleStyle(.switch)
             GroupBox("Передний белый свет") {
                 VStack(alignment: .leading, spacing: 18) {
@@ -162,6 +167,7 @@ struct FullView: View {
             }
 
             if lamp.syncMode == .screen {
+                screenPreview
                 GroupBox("Зона экрана для каждой лампы") {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(lamp.devices, id: \.ip) { d in
@@ -255,6 +261,81 @@ struct FullView: View {
                 }.padding(10)
             }
         }
+    }
+
+    // MARK: live screen-capture preview
+
+    /// A screen-shaped panel that draws each lamp's capture zone, filled with the live colour
+    /// currently being streamed to it, sized by the «Размер зоны» band fraction.
+    private var screenPreview: some View {
+        let W: CGFloat = 380
+        let H = max(130, W * captureAspect)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Что захватывается с экрана").font(.callout).foregroundStyle(.secondary)
+                Spacer()
+                if let info = lamp.captureInfo { Text(info).font(.caption).monospacedDigit().foregroundStyle(.secondary) }
+            }
+            ZStack {
+                RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
+                ForEach(activeZones, id: \.region) { z in
+                    let f = zoneFrac(z.region)
+                    ZStack {
+                        Rectangle().fill(lamp.regionColors[z.region] ?? Color.gray.opacity(0.4))
+                        Rectangle().stroke(Color.white.opacity(0.55), lineWidth: 1)
+                        Text(z.label).font(.caption2).bold().foregroundStyle(.white)
+                            .padding(.horizontal, 4).padding(.vertical, 1)
+                            .background(.black.opacity(0.4), in: Capsule())
+                            .fixedSize()
+                    }
+                    .frame(width: W * f.w, height: H * f.h)
+                    .position(x: W * (f.x + f.w / 2), y: H * (f.y + f.h / 2))
+                }
+                if activeZones.isEmpty {
+                    Text("Назначь зону лампам ниже ↓").font(.caption).foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .frame(width: W, height: H)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.3)))
+            Text("Зоны закрашены живым цветом, который уходит на лампу. Толщина полос = ползунок «Размер зоны».")
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var captureAspect: CGFloat {
+        let parts = (lamp.captureInfo ?? "").split(separator: "×")
+        if parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]), w > 0 { return CGFloat(h / w) }
+        return 9.0 / 16.0
+    }
+
+    /// Distinct active zones with the (short) names of the lamps that sample each.
+    private var activeZones: [(region: SyncRegion, label: String)] {
+        var byRegion: [SyncRegion: [String]] = [:]
+        for d in lamp.devices {
+            guard let r = lamp.displayRegion(d.ip) else { continue }
+            byRegion[r, default: []].append(shortName(d))
+        }
+        let order: [SyncRegion] = [.full, .top, .bottom, .left, .right]
+        return order.compactMap { r in byRegion[r].map { (r, $0.joined(separator: ", ")) } }
+    }
+
+    private func zoneFrac(_ r: SyncRegion) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
+        let b = CGFloat(lamp.bandFraction)
+        switch r {
+        case .full:   return (0, 0, 1, 1)
+        case .top:    return (0, 0, 1, b)
+        case .bottom: return (0, 1 - b, 1, b)
+        case .left:   return (0, 0, b, 1)
+        case .right:  return (1 - b, 0, b, 1)
+        }
+    }
+
+    private func shortName(_ d: DiscoveredDevice) -> String {
+        if d.model == "lamp15" { return "Bar" }
+        if d.model == "strip8" { return "Strip" }
+        if !d.model.isEmpty { return d.model }
+        return d.ip.split(separator: ".").last.map(String.init) ?? "?"
     }
 
     // MARK: helpers

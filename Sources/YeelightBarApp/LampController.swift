@@ -23,6 +23,7 @@ final class LampController: ObservableObject {
     @Published var musicSyncOn = false
     @Published var musicSyncStatus: String?
     @Published var syncColor = Color(rgb: 0x000000)
+    @Published var regionColors: [SyncRegion: Color] = [:]   // live colour sampled per screen zone
     @Published var captureInfo: String?
     @Published var screenHasPermission = false
     @Published var bandFraction: Double = 0.25 { didSet { sync.bandFraction = bandFraction } }
@@ -52,6 +53,7 @@ final class LampController: ObservableObject {
     init() {
         sync.onState = { [weak self] running, err in self?.screenSyncOn = running; self?.screenSyncStatus = err }
         sync.onColor = { [weak self] rgb in self?.syncColor = Color(rgb: rgb) }
+        sync.onRegionColors = { [weak self] d in self?.regionColors = d.mapValues { Color(rgb: $0) } }
         sync.onSource = { [weak self] w, h in self?.captureInfo = "\(w)×\(h)" }
         sync.onLuma = { [weak self] luma in self?.applyLuma(luma) }
         sync.bandFraction = bandFraction
@@ -118,11 +120,20 @@ final class LampController: ObservableObject {
         }
     }
 
-    /// Blink a lamp so the user can see which physical device a row is.
+    /// Blink a lamp so the user can spot which physical device a row is. Uses `set_scene "cf"`,
+    /// which turns the lamp ON into a colour flow even when it is currently off (plain `start_cf`
+    /// does nothing on an off lamp), then restores the prior power state.
     func identify(_ d: DiscoveredDevice) {
+        let isBar = d.support.contains("bg_set_rgb") || d.model == "lamp15"
+        let flow = isBar
+            ? "400,2,4000,100,400,2,4000,1,400,2,4000,100,400,2,4000,1"               // bar: warm-white CT blink
+            : "400,1,16711680,100,400,1,255,100,400,1,16711680,100,400,1,255,100"     // strip/bulb: red/blue RGB blink
         let dev = YeelightDevice(ip: d.ip, tcpPort: d.port)
         Task.detached {
-            _ = try? dev.control("start_cf", [6, 0, "300,2,3500,100,300,2,3500,1"])
+            let wasOn = ((try? dev.properties(["power"]))?.first == "on")
+            _ = try? dev.control("set_scene", ["cf", 8, 0, flow])
+            try? await Task.sleep(nanoseconds: 3_600_000_000)   // let the ~3.2 s flow finish
+            _ = try? dev.power(wasOn)                            // restore the prior power state
         }
     }
 
@@ -258,17 +269,32 @@ final class LampController: ObservableObject {
         return d.support.contains("bg_set_rgb") || d.model == "lamp15"
     }
 
-    /// Master power for the whole device. The bar needs `dev_toggle`; everything else uses
-    /// `set_power` with an explicit target (deterministic and actually supported).
+    /// Whole-device on indicator: true if either channel is lit.
+    var masterOn: Bool { power || ambientOn }
+
+    /// Master power: turn the WHOLE device on/off (front white + ambient together). Uses explicit
+    /// per-channel set_power/bg_set_power — deterministic, so the UI and device never disagree.
     func togglePower() {
-        let target = !power
+        let target = !masterOn
         if !target { stopScreenSync(); stopMusicSync() }
         power = target
+        push { try $0.power(target) }                     // front / main channel
         if selectedIsBar {
-            push { try $0.control("dev_toggle", []) }
+            ambientOn = target
+            let v = target ? "on" : "off"
+            push { try $0.control("bg_set_power", [v, "smooth", 300]) }   // ambient channel
         } else {
-            push { try $0.power(target) }
+            ambientOn = target                            // single-channel device
         }
+        scheduleResync()
+    }
+
+    /// Front white channel ONLY (the bar's main light). Leaves the ambient channel untouched —
+    /// switch this off to run "только подсветка". On a single-channel strip this is the whole light.
+    func setFrontPower(_ on: Bool) {
+        power = on
+        if !selectedIsBar { ambientOn = on }              // single channel: front == the only light
+        push { try $0.power(on) }
         scheduleResync()
     }
 

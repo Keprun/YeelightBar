@@ -101,8 +101,8 @@ struct MenuPanelView: View {
             .fixedSize()
 
             Spacer()
-            Toggle("", isOn: Binding(get: { lamp.power }, set: { _ in lamp.togglePower() }))
-                .toggleStyle(.switch).labelsHidden()
+            Toggle("", isOn: Binding(get: { lamp.masterOn }, set: { _ in lamp.togglePower() }))
+                .toggleStyle(.switch).labelsHidden().help("Вся лампа")
         }
     }
 
