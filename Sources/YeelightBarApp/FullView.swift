@@ -99,7 +99,7 @@ struct FullView: View {
     private var notConnected: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Лампа не подключена").font(.title3).bold()
-            Text("Открой раздел «Устройства», найди лампу и подключись.").foregroundStyle(.secondary)
+            Text("Открой раздел «Устройства», найди лампу и подключись.").foregroundStyle(Color.razerSecondary)
             Button("Перейти к устройствам") { section = .devices }.buttonStyle(.borderedProminent)
         }
     }
@@ -120,7 +120,7 @@ struct FullView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Передний свет").font(.title3)
                     Text("белый свет на монитор — независим от подсветки ниже")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color.razerSecondary)
                 }
             }.toggleStyle(.switch)
             GroupBox("Передний белый свет") {
@@ -140,7 +140,7 @@ struct FullView: View {
             GroupBox("Цвет подсветки") {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        Text("Текущий цвет").font(.callout).foregroundStyle(.secondary)
+                        Text("Текущий цвет").font(.callout).foregroundStyle(Color.razerSecondary)
                         Spacer()
                         RoundedRectangle(cornerRadius: 6).fill(lamp.ambientColor).frame(width: 40, height: 40)
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary.opacity(0.3)))
@@ -191,7 +191,7 @@ struct FullView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
                             Text("В группе \(lamp.groupIPs.count). Каждая лампа берёт цвет со своего экрана и зоны.")
-                                .font(.caption2).foregroundStyle(.secondary)
+                                .font(.caption2).foregroundStyle(Color.razerSecondary)
                             Spacer()
                             Button { lamp.refreshDisplays() } label: { Image(systemName: "arrow.clockwise") }
                                 .buttonStyle(.borderless).help("Обновить список экранов")
@@ -255,7 +255,7 @@ struct FullView: View {
                         }.pickerStyle(.segmented)
                         slider("Чувствительность", $lamp.musicSensitivity, 2...8, { String(format: "%.1f", $0) })
                         Text("Бит — пульс под бас. Спектр — бас=красный, мид=зелёный, верха=синий.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(Color.razerSecondary)
                     }.padding(10)
                 }
             }
@@ -264,7 +264,7 @@ struct FullView: View {
 
     private var scenesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Готовые пресеты белого света").foregroundStyle(.secondary)
+            Text("Готовые пресеты белого света").foregroundStyle(Color.razerSecondary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
                 sceneBtn("Reading", "book", 4000, 100)
                 sceneBtn("Relax", "cup.and.saucer", 2700, 40)
@@ -288,9 +288,9 @@ struct FullView: View {
             GroupBox("Найденные лампы") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Отметь несколько ламп — они управляются вместе (питание, цвет, сцены, эффекты).")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color.razerSecondary)
                     if lamp.devices.isEmpty {
-                        Text("Пока ничего — нажми «Автопоиск».").foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Пока ничего — нажми «Автопоиск».").foregroundStyle(Color.razerSecondary).frame(maxWidth: .infinity, alignment: .leading)
                     }
                     ForEach(lamp.devices, id: \.ip) { d in
                         let inGroup = lamp.groupIPs.contains(d.ip)
@@ -304,7 +304,7 @@ struct FullView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(name(d)).foregroundStyle(.primary)
-                                    Text(d.ip).font(.caption).foregroundStyle(.secondary)
+                                    Text(d.ip).font(.caption).foregroundStyle(Color.razerSecondary)
                                 }
                             }.buttonStyle(.plain)
                             if d.ip == lamp.selected?.ip {
@@ -337,13 +337,13 @@ struct FullView: View {
     private var screenPreview: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Подключено мониторов: \(lamp.displays.count)").font(.callout).foregroundStyle(.secondary)
+                Text("Подключено мониторов: \(lamp.displays.count)").font(.callout).foregroundStyle(Color.razerSecondary)
                 Spacer()
                 Button { lamp.refreshDisplays() } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless).help("Обновить список мониторов")
             }
             Text("Нажми на монитор, чтобы выбрать, какая лампа берёт с него цвет.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(Color.razerSecondary)
             displaysMap
         }
     }
@@ -351,7 +351,7 @@ struct FullView: View {
     @ViewBuilder private var displaysMap: some View {
         let infos = lamp.displays
         if infos.isEmpty {
-            Text("Мониторы не найдены").font(.caption).foregroundStyle(.secondary)
+            Text("Мониторы не найдены").font(.caption).foregroundStyle(Color.razerSecondary)
         } else {
             let union = infos.dropFirst().reduce(infos[0].bounds) { $0.union($1.bounds) }
             let scale = max(0.0001, min(540 / max(1, union.width), 240 / max(1, union.height)))
@@ -377,10 +377,10 @@ struct FullView: View {
     private func assignSheet(_ info: DisplayInfo) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Лампы на «\(info.short)»").font(.callout).bold()
-            Text("\(info.width)×\(info.height)" + (info.isMain ? " · основной" : "")).font(.caption).foregroundStyle(.secondary)
+            Text("\(info.width)×\(info.height)" + (info.isMain ? " · основной" : "")).font(.caption).foregroundStyle(Color.razerSecondary)
             Divider()
             if groupLamps.isEmpty {
-                Text("Сначала добавь лампы в группу\nна вкладке «Устройства»").font(.caption).foregroundStyle(.secondary)
+                Text("Сначала добавь лампы в группу\nна вкладке «Устройства»").font(.caption).foregroundStyle(Color.razerSecondary)
             } else {
                 ForEach(groupLamps, id: \.ip) { d in
                     let here = lamp.displayID(forLamp: d.ip) == info.id
@@ -465,7 +465,7 @@ struct FullView: View {
             HStack {
                 Text(label).font(.callout)
                 Spacer()
-                Text(display(value.wrappedValue)).font(.callout).monospacedDigit().foregroundStyle(.secondary)
+                Text(display(value.wrappedValue)).font(.callout).monospacedDigit().foregroundStyle(Color.razerSecondary)
             }
             Slider(value: value, in: range) { editing in if !editing { commit() } }
         }

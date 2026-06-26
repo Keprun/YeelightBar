@@ -91,11 +91,11 @@ struct MenuPanelView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
                         Text(displayName).font(.system(size: 15, weight: .medium))
-                        Image(systemName: "chevron.down").font(.system(size: 9)).foregroundStyle(.secondary)
+                        Image(systemName: "chevron.down").font(.system(size: 9)).foregroundStyle(Color.razerSecondary)
                     }
                     HStack(spacing: 5) {
                         Circle().fill(Color.green).frame(width: 6, height: 6)
-                        Text("online · \(lamp.selected?.ip ?? "")").font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text("online · \(lamp.selected?.ip ?? "")").font(.system(size: 11)).foregroundStyle(Color.razerSecondary)
                     }
                 }
             }
@@ -112,15 +112,15 @@ struct MenuPanelView: View {
 
     private var frontSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Front · white").font(.caption).foregroundStyle(.secondary)
+            Text("Front · white").font(.caption).foregroundStyle(Color.razerSecondary)
             HStack(spacing: 10) {
-                Image(systemName: "sun.max").font(.system(size: 13)).foregroundStyle(.secondary).frame(width: 18)
+                Image(systemName: "sun.max").font(.system(size: 13)).foregroundStyle(Color.razerSecondary).frame(width: 18)
                 Slider(value: $lamp.brightness, in: 1...100) { e in if !e { lamp.pushBrightness() } }
                 Text("\(Int(lamp.brightness))%").font(.caption).monospacedDigit()
-                    .frame(width: 40, alignment: .trailing).foregroundStyle(.secondary)
+                    .frame(width: 40, alignment: .trailing).foregroundStyle(Color.razerSecondary)
             }
             HStack(spacing: 10) {
-                Image(systemName: "thermometer.medium").font(.system(size: 13)).foregroundStyle(.secondary).frame(width: 18)
+                Image(systemName: "thermometer.medium").font(.system(size: 13)).foregroundStyle(Color.razerSecondary).frame(width: 18)
                 GeometryReader { geo in
                     LinearGradient(colors: [Color(rgb: 0xFF9A3C), Color(rgb: 0xFFD9A0), Color(rgb: 0xFFF6EC), Color(rgb: 0xDFEAFF), Color(rgb: 0xBCD4FF)],
                                    startPoint: .leading, endPoint: .trailing)
@@ -130,7 +130,7 @@ struct MenuPanelView: View {
                 }
                 .frame(height: 16).clipShape(RoundedRectangle(cornerRadius: 8))
                 Text("\(Int(lamp.colorTempK))K").font(.caption2).monospacedDigit()
-                    .frame(width: 46, alignment: .trailing).foregroundStyle(.secondary)
+                    .frame(width: 46, alignment: .trailing).foregroundStyle(Color.razerSecondary)
             }
         }
     }
@@ -140,7 +140,7 @@ struct MenuPanelView: View {
     private var ambientSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Text("Ambient").font(.caption).foregroundStyle(.secondary)
+                Text("Ambient").font(.caption).foregroundStyle(Color.razerSecondary)
                 Spacer()
                 RoundedRectangle(cornerRadius: 4).fill(lamp.ambientColor)
                     .frame(width: 22, height: 22)
@@ -173,7 +173,7 @@ struct MenuPanelView: View {
 
     private var effectSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Эффект ambient").font(.caption).foregroundStyle(.secondary)
+            Text("Эффект ambient").font(.caption).foregroundStyle(Color.razerSecondary)
             Picker("", selection: Binding(get: { lamp.syncMode }, set: { lamp.setSyncMode($0) })) {
                 Text("Выкл").tag(SyncMode.off)
                 Text("Экран").tag(SyncMode.screen)
@@ -184,11 +184,11 @@ struct MenuPanelView: View {
 
             let groupDevices = lamp.devices.filter { lamp.groupIPs.contains($0.ip) }
             if !groupDevices.isEmpty {
-                Text("Зона экрана (группа · \(groupDevices.count))").font(.caption2).foregroundStyle(.secondary)
+                Text("Зона экрана (группа · \(groupDevices.count))").font(.caption2).foregroundStyle(Color.razerSecondary)
                 ForEach(groupDevices, id: \.ip) { d in
                     HStack(spacing: 6) {
                         Text(friendlyName(d)).font(.caption).lineLimit(1)
-                        Text(d.ip).font(.caption2).foregroundStyle(.secondary)
+                        Text(d.ip).font(.caption2).foregroundStyle(Color.razerSecondary)
                         Spacer()
                         Menu(regionLabel(lamp.displayRegion(d.ip))) {
                             Button("Верх") { lamp.setRegion(d.ip, .top) }
@@ -211,7 +211,7 @@ struct MenuPanelView: View {
                 HStack(spacing: 10) {
                     RoundedRectangle(cornerRadius: 5).fill(lamp.syncColor).frame(width: 26, height: 26)
                         .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.secondary.opacity(0.3)))
-                    Text("пульс под системный звук → ambient").font(.caption2).foregroundStyle(.secondary)
+                    Text("пульс под системный звук → ambient").font(.caption2).foregroundStyle(Color.razerSecondary)
                     Spacer()
                 }
                 Picker("", selection: Binding(get: { lamp.musicStyle }, set: { lamp.musicStyle = $0 })) {
@@ -221,7 +221,7 @@ struct MenuPanelView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 HStack(spacing: 10) {
-                    Text("Чувств.").font(.caption).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
+                    Text("Чувств.").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
                     Slider(value: $lamp.musicSensitivity, in: 2...8)
                 }
             }
@@ -245,12 +245,12 @@ struct MenuPanelView: View {
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.3)))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Источник цвета").font(.caption).foregroundStyle(.secondary)
+                        Text("Источник цвета").font(.caption).foregroundStyle(Color.razerSecondary)
                         Text("верх \(Int(lamp.bandFraction * 100))% экрана").font(.caption2)
                         HStack(spacing: 5) {
                             RoundedRectangle(cornerRadius: 3).fill(lamp.syncColor).frame(width: 18, height: 18)
                                 .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.secondary.opacity(0.3)))
-                            Image(systemName: "arrow.right").font(.caption2).foregroundStyle(.secondary)
+                            Image(systemName: "arrow.right").font(.caption2).foregroundStyle(Color.razerSecondary)
                             Image(systemName: "lightbulb.fill").font(.caption2).foregroundStyle(.yellow)
                         }
                     }
@@ -258,17 +258,17 @@ struct MenuPanelView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Text("Область").font(.caption).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
+                    Text("Область").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
                     Slider(value: $lamp.bandFraction, in: 0.1...0.6)
-                    Text("\(Int(lamp.bandFraction * 100))%").font(.caption2).monospacedDigit().frame(width: 34, alignment: .trailing).foregroundStyle(.secondary)
+                    Text("\(Int(lamp.bandFraction * 100))%").font(.caption2).monospacedDigit().frame(width: 34, alignment: .trailing).foregroundStyle(Color.razerSecondary)
                 }
                 Toggle(isOn: $lamp.brightnessFollow) { Text("Яркость по сцене").font(.caption) }.toggleStyle(.switch).controlSize(.mini)
                 HStack(spacing: 10) {
-                    Text("Плавность").font(.caption).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
+                    Text("Плавность").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
                     Slider(value: $lamp.syncSmoothing, in: 0.1...0.8)
                 }
                 HStack(spacing: 10) {
-                    Text("Насыщ.").font(.caption).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
+                    Text("Насыщ.").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
                     Slider(value: $lamp.syncSaturation, in: 1.0...2.0)
                 }
             }
@@ -279,7 +279,7 @@ struct MenuPanelView: View {
 
     private var scenesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Scenes").font(.caption).foregroundStyle(.secondary)
+            Text("Scenes").font(.caption).foregroundStyle(Color.razerSecondary)
             HStack(spacing: 8) {
                 sceneChip("Reading", "book", ct: 4000, b: 100)
                 sceneChip("Relax", "cup.and.saucer", ct: 2700, b: 40)
@@ -304,7 +304,7 @@ struct MenuPanelView: View {
             Spacer()
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.buttonStyle(.borderless)
         }
-        .font(.caption).foregroundStyle(.secondary)
+        .font(.caption).foregroundStyle(Color.razerSecondary)
         .padding(.horizontal, 14).padding(.vertical, 10)
         .overlay(Divider(), alignment: .top)
     }
@@ -345,7 +345,7 @@ struct MenuPanelView: View {
             .disabled(lamp.isSearching)
 
             if lamp.connecting {
-                HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Connecting…").font(.caption).foregroundStyle(.secondary) }
+                HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Connecting…").font(.caption).foregroundStyle(Color.razerSecondary) }
             }
             if let err = lamp.connectError {
                 Text(err).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
@@ -353,7 +353,7 @@ struct MenuPanelView: View {
 
             if !lamp.devices.isEmpty {
                 Text("Found \(lamp.devices.count) — tap to connect, ⚡ to blink & identify")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.razerSecondary)
                 ForEach(lamp.devices, id: \.ip) { d in
                     HStack(spacing: 8) {
                         Button { lamp.connect(to: d) } label: {
@@ -361,7 +361,7 @@ struct MenuPanelView: View {
                                 Image(systemName: "lightbulb")
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(friendlyName(d))
-                                    Text(d.ip).font(.caption).foregroundStyle(.secondary)
+                                    Text(d.ip).font(.caption).foregroundStyle(Color.razerSecondary)
                                 }
                                 Spacer()
                                 if d.ip == lamp.selected?.ip {
@@ -376,7 +376,7 @@ struct MenuPanelView: View {
             }
 
             Divider()
-            Text("Or enter IP manually").font(.caption).foregroundStyle(.secondary)
+            Text("Or enter IP manually").font(.caption).foregroundStyle(Color.razerSecondary)
             HStack {
                 TextField("192.168.1.x", text: $lamp.manualIP).textFieldStyle(.roundedBorder).onSubmit { lamp.addManualIP() }
                 Button("Add") { lamp.addManualIP() }.disabled(lamp.manualIP.isEmpty)

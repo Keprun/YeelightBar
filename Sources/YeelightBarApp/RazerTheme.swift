@@ -5,13 +5,13 @@ import SwiftUI
 extension Color {
     static let razerGreen     = Color(red: 0.267, green: 0.839, blue: 0.173)   // #44D62C signature
     static let razerGreenDim  = Color(red: 0.267, green: 0.839, blue: 0.173).opacity(0.55)
-    static let razerBG        = Color(red: 0.039, green: 0.047, blue: 0.039)   // ~#0A0C0A near-black
-    static let razerBGTop     = Color(red: 0.063, green: 0.078, blue: 0.063)   // slightly lifted (gradient top)
-    static let razerSurface   = Color(red: 0.082, green: 0.094, blue: 0.082)   // panel fill
-    static let razerSurfaceHi = Color(red: 0.114, green: 0.129, blue: 0.114)   // raised control fill
-    static let razerText      = Color(white: 0.93)
-    static let razerSecondary = Color(red: 0.46, green: 0.51, blue: 0.46)      // greenish-grey
-    static let razerHairline  = Color.razerGreen.opacity(0.22)
+    static let razerBG        = Color(red: 0.086, green: 0.098, blue: 0.086)   // ~#16191 6 charcoal (not pure black)
+    static let razerBGTop     = Color(red: 0.118, green: 0.133, blue: 0.118)   // lifted gradient top
+    static let razerSurface   = Color(red: 0.137, green: 0.153, blue: 0.137)   // panel fill (#23272 3) — pops vs bg
+    static let razerSurfaceHi = Color(red: 0.184, green: 0.204, blue: 0.184)   // raised control fill
+    static let razerText      = Color(white: 0.95)
+    static let razerSecondary = Color(red: 0.64, green: 0.69, blue: 0.64)      // bright greenish-grey (readable)
+    static let razerHairline  = Color.razerGreen.opacity(0.30)
 }
 
 /// Full-bleed dark Razer backdrop with a faint green glow up top.
