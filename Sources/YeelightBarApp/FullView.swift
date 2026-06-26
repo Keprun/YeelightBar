@@ -172,28 +172,28 @@ struct FullView: View {
             }
 
             if lamp.syncMode == .screen {
-                if lamp.displays.count > 1 {
-                    HStack {
-                        Text("Захват с экрана").font(.callout).foregroundStyle(.secondary)
-                        Picker("", selection: $lamp.captureDisplayID) {
-                            ForEach(lamp.displays) { d in Text(d.label).tag(d.id) }
-                        }.labelsHidden().fixedSize()
-                        Button { lamp.refreshDisplays() } label: { Image(systemName: "arrow.clockwise") }
-                            .buttonStyle(.borderless).help("Обновить список экранов")
-                        Spacer()
-                    }
-                }
                 screenPreview
-                GroupBox("Зона экрана для каждой лампы группы") {
+                GroupBox("Какая лампа · с какого экрана · какая зона") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("В группе сейчас \(lamp.groupIPs.count). Добавляй/убирай лампы во вкладке «Устройства».")
-                            .font(.caption2).foregroundStyle(.secondary)
+                        HStack {
+                            Text("В группе \(lamp.groupIPs.count). Каждая лампа берёт цвет со своего экрана и зоны.")
+                                .font(.caption2).foregroundStyle(.secondary)
+                            Spacer()
+                            Button { lamp.refreshDisplays() } label: { Image(systemName: "arrow.clockwise") }
+                                .buttonStyle(.borderless).help("Обновить список экранов")
+                        }
                         ForEach(lamp.devices.filter { lamp.groupIPs.contains($0.ip) }, id: \.ip) { d in
-                            HStack {
+                            HStack(spacing: 8) {
                                 Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb")
-                                Text(name(d)).font(.callout)
-                                Text(d.ip).font(.caption).foregroundStyle(.secondary)
+                                Text(name(d)).font(.callout).lineLimit(1)
                                 Spacer()
+                                if lamp.displays.count > 1 {
+                                    Menu(displayShort(lamp.displayID(forLamp: d.ip))) {
+                                        ForEach(lamp.displays) { disp in
+                                            Button(disp.label) { lamp.setSyncDisplay(d.ip, disp.id) }
+                                        }
+                                    }.fixedSize()
+                                }
                                 Menu(zoneLabel(lamp.displayRegion(d.ip))) {
                                     Button("Верх") { lamp.setRegion(d.ip, .top) }
                                     Button("Низ") { lamp.setRegion(d.ip, .bottom) }
@@ -295,61 +295,72 @@ struct FullView: View {
         }
     }
 
-    // MARK: live screen-capture preview
+    // MARK: live multi-display capture preview
 
-    /// A screen-shaped panel that draws each lamp's capture zone, filled with the live colour
-    /// currently being streamed to it, sized by the «Размер зоны» band fraction.
+    /// One screen-shaped panel per display that group lamps sample, each zone filled with the live
+    /// colour currently streamed to its lamp(s), sized by the «Размер зоны» band fraction.
     private var screenPreview: some View {
-        let W: CGFloat = 380
-        let H = max(130, W * captureAspect)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Что захватывается с экрана").font(.callout).foregroundStyle(.secondary)
-                Spacer()
-                if let info = lamp.captureInfo { Text(info).font(.caption).monospacedDigit().foregroundStyle(.secondary) }
+        VStack(alignment: .leading, spacing: 10) {
+            Text(lamp.displays.count > 1 ? "Что захватывается с экранов" : "Что захватывается с экрана")
+                .font(.callout).foregroundStyle(.secondary)
+            let active = activeDisplays
+            if active.isEmpty {
+                Text("Назначь лампам экран и зону ниже ↓").font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(active) { info in displayPreview(info) }
             }
+            Text("Зоны закрашены живым цветом, который уходит на лампу. Толщина полос = «Размер зоны».")
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Displays that at least one group lamp samples (deduped, in the system display order).
+    private var activeDisplays: [DisplayInfo] {
+        let used = Set(lamp.devices.filter { lamp.groupIPs.contains($0.ip) }.map { lamp.displayID(forLamp: $0.ip) })
+        return lamp.displays.filter { used.contains($0.id) }
+    }
+
+    private func displayPreview(_ info: DisplayInfo) -> some View {
+        let W: CGFloat = 360
+        let aspect = info.width > 0 ? CGFloat(info.height) / CGFloat(info.width) : 0.5625
+        let H = max(90, W * aspect)
+        let zones = zonesOn(info.id)
+        let colors = lamp.regionColors[info.id] ?? [:]
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(info.label).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
             ZStack {
                 RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
-                ForEach(activeZones, id: \.region) { z in
+                ForEach(zones, id: \.region) { z in
                     let f = zoneFrac(z.region)
                     ZStack {
-                        Rectangle().fill(lamp.regionColors[z.region] ?? Color.gray.opacity(0.4))
+                        Rectangle().fill(colors[z.region] ?? Color.gray.opacity(0.4))
                         Rectangle().stroke(Color.white.opacity(0.55), lineWidth: 1)
                         Text(z.label).font(.caption2).bold().foregroundStyle(.white)
                             .padding(.horizontal, 4).padding(.vertical, 1)
-                            .background(.black.opacity(0.4), in: Capsule())
-                            .fixedSize()
+                            .background(.black.opacity(0.4), in: Capsule()).fixedSize()
                     }
                     .frame(width: W * f.w, height: H * f.h)
                     .position(x: W * (f.x + f.w / 2), y: H * (f.y + f.h / 2))
-                }
-                if activeZones.isEmpty {
-                    Text("Назначь зону лампам ниже ↓").font(.caption).foregroundStyle(.white.opacity(0.7))
                 }
             }
             .frame(width: W, height: H)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.3)))
-            Text("Зоны закрашены живым цветом, который уходит на лампу. Толщина полос = ползунок «Размер зоны».")
-                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private var captureAspect: CGFloat {
-        let parts = (lamp.captureInfo ?? "").split(separator: "×")
-        if parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]), w > 0 { return CGFloat(h / w) }
-        return 9.0 / 16.0
-    }
-
-    /// Distinct active zones with the (short) names of the lamps that sample each.
-    private var activeZones: [(region: SyncRegion, label: String)] {
+    /// Zones assigned on a given display, with the short names of the lamp(s) on each.
+    private func zonesOn(_ did: CGDirectDisplayID) -> [(region: SyncRegion, label: String)] {
         var byRegion: [SyncRegion: [String]] = [:]
-        for d in lamp.devices {
-            guard let r = lamp.displayRegion(d.ip) else { continue }
-            byRegion[r, default: []].append(shortName(d))
+        for d in lamp.devices where lamp.groupIPs.contains(d.ip) && lamp.displayID(forLamp: d.ip) == did {
+            byRegion[lamp.displayRegion(d.ip) ?? .top, default: []].append(shortName(d))
         }
         let order: [SyncRegion] = [.full, .top, .bottom, .left, .right]
         return order.compactMap { r in byRegion[r].map { (r, $0.joined(separator: ", ")) } }
+    }
+
+    private func displayShort(_ did: CGDirectDisplayID) -> String {
+        lamp.displays.first(where: { $0.id == did }).map { "\($0.width)×\($0.height)" } ?? "экран"
     }
 
     private func zoneFrac(_ r: SyncRegion) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {

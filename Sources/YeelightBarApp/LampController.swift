@@ -31,16 +31,13 @@ final class LampController: ObservableObject {
     @Published var musicSyncOn = false
     @Published var musicSyncStatus: String?
     @Published var syncColor = Color(rgb: 0x000000)
-    @Published var regionColors: [SyncRegion: Color] = [:]   // live colour sampled per screen zone
+    @Published var regionColors: [CGDirectDisplayID: [SyncRegion: Color]] = [:]   // live colour per display+zone
     @Published var captureInfo: String?
     @Published var screenHasPermission = false
     @Published var displays: [DisplayInfo] = []
-    @Published var captureDisplayID: CGDirectDisplayID = 0 {
-        didSet {
-            sync.preferredDisplayID = captureDisplayID
-            if let d = displays.first(where: { $0.id == captureDisplayID }) { captureInfo = "\(d.width)×\(d.height)" }
-            if screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) }   // recapture from the chosen screen
-        }
+    /// Which display each lamp samples for screen-sync (per-lamp; unset → main display).
+    @Published var syncDisplays: [String: CGDirectDisplayID] = [:] {
+        didSet { if !suppressRegionRestart, screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) } }
     }
     @Published var bandFraction: Double = 0.25 { didSet { sync.bandFraction = bandFraction } }
     @Published var brightnessFollow = false
@@ -73,8 +70,7 @@ final class LampController: ObservableObject {
     init() {
         sync.onState = { [weak self] running, err in self?.screenSyncOn = running; self?.screenSyncStatus = err }
         sync.onColor = { [weak self] rgb in self?.syncColor = Color(rgb: rgb) }
-        sync.onRegionColors = { [weak self] d in self?.regionColors = d.mapValues { Color(rgb: $0) } }
-        sync.onSource = { [weak self] w, h in self?.captureInfo = "\(w)×\(h)" }
+        sync.onRegionColors = { [weak self] d in self?.regionColors = d.mapValues { $0.mapValues { Color(rgb: $0) } } }
         sync.onLuma = { [weak self] luma in self?.applyLuma(luma) }
         sync.bandFraction = bandFraction
         sync.smoothing = syncSmoothing
@@ -85,7 +81,6 @@ final class LampController: ObservableObject {
         music.style = musicStyle
         refreshScreenPermission()
         refreshDisplays()
-        sync.preferredDisplayID = captureDisplayID   // didSet doesn't fire during init
         restoreOnLaunch()
     }
 
@@ -198,6 +193,7 @@ final class LampController: ObservableObject {
             }
             suppressRegionRestart = true        // the single restart below covers this removal
             syncRegions.removeValue(forKey: d.ip)
+            syncDisplays.removeValue(forKey: d.ip)
             suppressRegionRestart = false
         } else {
             groupIPs.insert(d.ip)
@@ -221,6 +217,7 @@ final class LampController: ObservableObject {
         groupIPs.formIntersection(live)
         suppressRegionRestart = true
         syncRegions = syncRegions.filter { live.contains($0.key) }
+        syncDisplays = syncDisplays.filter { live.contains($0.key) }
         suppressRegionRestart = false
         if let sel = selected, !live.contains(sel.ip) {       // primary itself vanished
             if let nip = groupIPs.first, let next = found.first(where: { $0.ip == nip }) {
@@ -327,6 +324,7 @@ final class LampController: ObservableObject {
                     if let oldIP, oldIP != match.ip {
                         self.suppressRegionRestart = true
                         if let z = self.syncRegions.removeValue(forKey: oldIP) { self.syncRegions[match.ip] = z }
+                        if let dz = self.syncDisplays.removeValue(forKey: oldIP) { self.syncDisplays[match.ip] = dz }
                         self.suppressRegionRestart = false
                     }
                     self.groupIPs = self.groupIPs.intersection(live).union([match.ip])
@@ -515,7 +513,8 @@ final class LampController: ObservableObject {
     /// ever touched — so an effect only drives the lamps you explicitly added.
     private func syncTargets() -> [SyncTarget] {
         devices.filter { groupIPs.contains($0.ip) }.map { d in
-            SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: syncRegions[d.ip] ?? .top)
+            SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d),
+                       region: syncRegions[d.ip] ?? .top, displayID: displayID(forLamp: d.ip))
         }
     }
 
@@ -591,8 +590,19 @@ final class LampController: ObservableObject {
             DisplayInfo(id: id, width: CGDisplayPixelsWide(id), height: CGDisplayPixelsHigh(id),
                         label: "\(CGDisplayPixelsWide(id))×\(CGDisplayPixelsHigh(id))" + (id == main ? " · основной" : ""))
         }
-        if captureDisplayID == 0 || !ids.contains(captureDisplayID) { captureDisplayID = main }
+        // a lamp pinned to a now-unplugged screen falls back to main (drop the stale mapping)
+        let live = Set(ids)
+        if syncDisplays.contains(where: { !live.contains($0.value) }) {
+            suppressRegionRestart = true
+            syncDisplays = syncDisplays.filter { live.contains($0.value) }
+            suppressRegionRestart = false
+            if screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) }
+        }
     }
+
+    /// Which display a lamp samples for screen-sync (defaults to the system main display).
+    func displayID(forLamp ip: String) -> CGDirectDisplayID { syncDisplays[ip] ?? CGMainDisplayID() }
+    func setSyncDisplay(_ ip: String, _ displayID: CGDirectDisplayID) { syncDisplays[ip] = displayID }
 
     func openScreenSettings() {
         CGRequestScreenCaptureAccess() // surfaces the system prompt the first time

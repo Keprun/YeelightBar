@@ -2,78 +2,85 @@ import Foundation
 import ScreenCaptureKit
 import CoreMedia
 import CoreVideo
+import CoreGraphics
 import YeelightKit
 
 enum SyncRegion: String, Hashable, CaseIterable { case top, bottom, left, right, full }
 
-struct SyncTarget { let ip: String; let port: UInt16; let method: String; let region: SyncRegion }
+/// One lamp's screen-sync assignment: which display it samples, which region of it, and how to stream.
+struct SyncTarget {
+    let ip: String
+    let port: UInt16
+    let method: String
+    let region: SyncRegion
+    let displayID: CGDirectDisplayID
+}
 
-/// Fans colour out to one or more lamps, each with its own UDP session and screen region.
-/// All device socket I/O is serialized on a private queue so it never blocks the capture
-/// thread and never races the per-device UDP fd/token.
+/// Fans colour out to one or more lamps. Each lamp is bound to a (display, region). All device
+/// socket I/O is serialized on a private queue so it never blocks capture and never races a lamp.
 final class SyncOutput {
-    private let targets: [(device: YeelightDevice, region: SyncRegion)]
+    private let targets: [(device: YeelightDevice, displayID: CGDirectDisplayID, region: SyncRegion)]
     private let io = DispatchQueue(label: "yeelightbar.syncoutput")
     init(_ ts: [SyncTarget]) {
         targets = ts.map { t in
             let d = YeelightDevice(ip: t.ip, tcpPort: t.port)
             d.streamMethod = t.method
-            return (d, t.region)
+            return (d, t.displayID, t.region)
         }
     }
-    /// Distinct regions across all targets (immutable — safe to read from any thread).
-    var regions: Set<SyncRegion> { Set(targets.map { $0.region }) }
     var isEmpty: Bool { targets.isEmpty }
+    var displayIDs: Set<CGDirectDisplayID> { Set(targets.map { $0.displayID }) }
+    func regions(on display: CGDirectDisplayID) -> Set<SyncRegion> {
+        Set(targets.filter { $0.displayID == display }.map { $0.region })
+    }
 
     func openStream() { io.async { self.targets.forEach { _ = try? $0.device.openStream(timeout: 1.5) } } }
-    /// Recovery: re-acquire a token for any target whose session has dropped.
     func ensureStreams() { io.async { self.targets.forEach { if $0.device.streamToken == nil { _ = try? $0.device.openStream(timeout: 0.8) } } } }
-    func stream(rgb: Int) { io.async { self.targets.forEach { $0.device.stream(rgb: rgb) } } }            // music: same to all
-    func streamRegion(_ region: SyncRegion, rgb: Int) {                                                     // screen: per region
-        io.async { for t in self.targets where t.region == region { t.device.stream(rgb: rgb) } }
+    func stream(rgb: Int) { io.async { self.targets.forEach { $0.device.stream(rgb: rgb) } } }   // music: same to all
+    func streamRegion(_ display: CGDirectDisplayID, _ region: SyncRegion, rgb: Int) {              // screen: per display+region
+        io.async { for t in self.targets where t.displayID == display && t.region == region { t.device.stream(rgb: rgb) } }
     }
     func keepAlive() { io.async { self.targets.forEach { $0.device.keepAlive() } } }
     func closeStream() { io.async { self.targets.forEach { $0.device.closeStream() } } }
 }
 
-/// Ambilight engine: captures the display via ScreenCaptureKit and streams the
-/// representative colour of each target's screen region to that target's lamp.
+/// Multi-display ambilight engine: opens one ScreenCaptureKit stream per display that has lamps
+/// assigned, computes each target's region colour on its own display, and streams it to that lamp.
 ///
-/// Lifecycle invariant: `stream`, `out`, `frameCount`, `smoothedByRegion`, `keepAliveTimer`
-/// and `generation` are touched ONLY on `queue`. start()/stop() enqueue onto `queue`, the
-/// SCStream sample handler runs on `queue`, and every async setup callback hops back onto
-/// `queue` and re-checks `generation` so a late callback can't resurrect a torn-down capture.
+/// Lifecycle invariant: stream maps / out / smoothed / frameCount / keepAliveTimer / generation are
+/// touched ONLY on `queue`. start()/stop() enqueue onto it; every sample handler and async setup
+/// callback runs on / hops back onto `queue` and re-checks `generation`, so a late callback can't
+/// resurrect a torn-down capture.
 final class ScreenSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
-    var onColor: ((Int) -> Void)?
-    var onRegionColors: (([SyncRegion: Int]) -> Void)?
-    var onSource: ((Int, Int) -> Void)?
+    var onColor: ((Int) -> Void)?                                   // primary preview swatch (mini panel)
+    var onRegionColors: (([CGDirectDisplayID: [SyncRegion: Int]]) -> Void)?
     var onLuma: ((Double) -> Void)?
     var bandFraction: Double = 0.25
     var smoothing: Double = 0.35
     var saturation: Double = 1.25
-    var preferredDisplayID: CGDirectDisplayID = 0   // 0 → main display; else capture this specific screen
 
-    private var stream: SCStream?
     private var out: SyncOutput?
+    private var streamsByDisplay: [CGDirectDisplayID: SCStream] = [:]
+    private var displayByStream: [ObjectIdentifier: CGDirectDisplayID] = [:]
     private let queue = DispatchQueue(label: "yeelightbar.screensync")
-    private var smoothedByRegion: [SyncRegion: (r: Double, g: Double, b: Double)] = [:]
+    private var smoothed: [CGDirectDisplayID: [SyncRegion: (r: Double, g: Double, b: Double)]] = [:]
     private var keepAliveTimer: DispatchSourceTimer?
     private var kaTick = 0
     private var frameCount = 0
-    private var generation = 0   // bumped on every start()/stop(); guards async setup callbacks
+    private var generation = 0
 
     func start(targets: [SyncTarget]) {
         queue.async {
             self.generation += 1
             let gen = self.generation
             self.frameCount = 0
-            self.smoothedByRegion = [:]
+            self.smoothed = [:]
             let o = SyncOutput(targets)
             self.out = o
             o.openStream()
             self.startKeepAlive()
-            self.beginCapture(gen: gen)
+            self.beginCapture(gen: gen, displays: o.displayIDs)
         }
     }
 
@@ -81,65 +88,67 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
         queue.async { self.generation += 1; self.teardown() }
     }
 
-    // MARK: - Capture setup (all callbacks hop back onto `queue` and re-check generation)
+    // MARK: - Capture setup
 
-    private func beginCapture(gen: Int) {
+    private func beginCapture(gen: Int, displays: Set<CGDirectDisplayID>) {
         SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: true) { content, error in
             self.queue.async {
-                guard gen == self.generation else { return }   // superseded by stop()/restart
+                guard gen == self.generation else { return }
                 if error != nil {
                     self.teardown()
                     self.report(false, "Нет доступа к захвату экрана. Разреши «Запись экрана» и перезапусти приложение.")
                     return
                 }
-                let want = self.preferredDisplayID
-                guard let display = content?.displays.first(where: { $0.displayID == want && want != 0 })
-                                 ?? content?.displays.first(where: { $0.displayID == CGMainDisplayID() })
-                                 ?? content?.displays.first else {
-                    self.teardown(); self.report(false, "Не найден дисплей для захвата."); return
-                }
-                self.reportSource(display.width, display.height)
+                guard let content else { self.teardown(); self.report(false, "Не удалось получить список экранов."); return }
 
-                // Resolution-independent capture: keep the display's EXACT aspect (no letterbox)
-                // and scale the longer edge to a fixed target, so sampling density is the same on a
-                // 16:9 laptop, a 4K panel, a portrait monitor, or a 32:9 5120×1440 ultrawide.
-                let dw = max(1, display.width), dh = max(1, display.height)
-                let scale = 192.0 / Double(max(dw, dh))
-                func even(_ x: Double) -> Int { let n = max(16, Int(x.rounded())); return n - (n % 2) }
-                let capW = even(Double(dw) * scale)
-                let capH = even(Double(dh) * scale)
-                let config = SCStreamConfiguration()
-                config.width = capW
-                config.height = capH
-                config.minimumFrameInterval = CMTime(value: 1, timescale: 20)
-                config.pixelFormat = kCVPixelFormatType_32BGRA
-                config.queueDepth = 3
-                config.showsCursor = false
-
-                let stream = SCStream(filter: SCContentFilter(display: display, excludingApplications: [], exceptingWindows: []),
-                                      configuration: config, delegate: nil)
-                do {
-                    try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: self.queue)
-                } catch {
-                    self.teardown(); self.report(false, "addStreamOutput: \(error.localizedDescription)"); return
-                }
-                stream.startCapture { err in
-                    self.queue.async {
-                        guard gen == self.generation else { stream.stopCapture(completionHandler: { _ in }); return }
-                        if let err {
-                            self.teardown(); self.report(false, "Не удалось начать захват: \(err.localizedDescription).")
-                        } else {
-                            self.stream = stream
-                            self.report(true, nil)
+                for did in displays {
+                    // fall back to the main display if a target's chosen screen was unplugged
+                    guard let scd = content.displays.first(where: { $0.displayID == did })
+                                 ?? content.displays.first(where: { $0.displayID == CGMainDisplayID() })
+                                 ?? content.displays.first else { continue }
+                    let config = Self.config(for: scd)
+                    let stream = SCStream(filter: SCContentFilter(display: scd, excludingApplications: [], exceptingWindows: []),
+                                          configuration: config, delegate: nil)
+                    do {
+                        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: self.queue)
+                    } catch { continue }
+                    self.displayByStream[ObjectIdentifier(stream)] = did
+                    self.streamsByDisplay[did] = stream
+                    stream.startCapture { err in
+                        self.queue.async {
+                            guard gen == self.generation else { stream.stopCapture(completionHandler: { _ in }); return }
+                            if err != nil {
+                                self.streamsByDisplay[did] = nil
+                                self.displayByStream[ObjectIdentifier(stream)] = nil
+                            }
                         }
                     }
+                }
+
+                if self.streamsByDisplay.isEmpty {
+                    self.teardown(); self.report(false, "Не найден дисплей для захвата.")
+                } else {
+                    self.report(true, nil)
                 }
             }
         }
     }
 
-    /// Independent keep-alive + session-recovery timer (NOT gated on frame arrival, so a
-    /// static screen — which makes SCK stop delivering frames — can't let the session expire).
+    private static func config(for display: SCDisplay) -> SCStreamConfiguration {
+        // Resolution-independent: scale the longer edge to a fixed target, keep the exact aspect.
+        let dw = max(1, display.width), dh = max(1, display.height)
+        let scale = 192.0 / Double(max(dw, dh))
+        func even(_ x: Double) -> Int { let n = max(16, Int(x.rounded())); return n - (n % 2) }
+        let config = SCStreamConfiguration()
+        config.width = even(Double(dw) * scale)
+        config.height = even(Double(dh) * scale)
+        config.minimumFrameInterval = CMTime(value: 1, timescale: 20)
+        config.pixelFormat = kCVPixelFormatType_32BGRA
+        config.queueDepth = 3
+        config.showsCursor = false
+        return config
+    }
+
     private func startKeepAlive() {   // on queue
         keepAliveTimer?.cancel()
         kaTick = 0
@@ -149,7 +158,7 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             guard let self, let out = self.out else { return }
             out.keepAlive()
             self.kaTick += 1
-            if self.kaTick % 3 == 0 { out.ensureStreams() }   // re-open dropped sessions ~every 24 s
+            if self.kaTick % 3 == 0 { out.ensureStreams() }
         }
         t.resume()
         keepAliveTimer = t
@@ -157,50 +166,55 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
 
     private func teardown() {   // on queue
         keepAliveTimer?.cancel(); keepAliveTimer = nil
-        stream?.stopCapture(completionHandler: { _ in }); stream = nil
+        for (_, s) in streamsByDisplay { s.stopCapture(completionHandler: { _ in }) }
+        streamsByDisplay.removeAll(); displayByStream.removeAll()
         out?.closeStream(); out = nil
     }
 
     private func report(_ running: Bool, _ err: String?) { DispatchQueue.main.async { self.onState?(running, err) } }
-    private func reportSource(_ w: Int, _ h: Int) { DispatchQueue.main.async { self.onSource?(w, h) } }
 
-    // MARK: - SCStreamOutput
+    // MARK: - SCStreamOutput (runs on `queue`)
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard type == .screen, let pb = CMSampleBufferGetImageBuffer(sampleBuffer), let out = out else { return }
+        guard type == .screen,
+              let did = displayByStream[ObjectIdentifier(stream)],
+              let out = out,
+              let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let wanted = out.regions(on: did)
+        guard !wanted.isEmpty else { return }
+
         CVPixelBufferLockBaseAddress(pb, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
         guard let base = CVPixelBufferGetBaseAddress(pb) else { return }
-
-        let w = CVPixelBufferGetWidth(pb)
-        let h = CVPixelBufferGetHeight(pb)
+        let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb)
         let bpr = CVPixelBufferGetBytesPerRow(pb)
         let ptr = base.assumingMemoryBound(to: UInt8.self)
         let k = min(1.0, max(0.05, smoothing))
 
-        var previewRGB = 0
+        var byRegion: [SyncRegion: Int] = [:]
         var lumaFollow = -1.0
-        var colors: [SyncRegion: Int] = [:]
-        for region in out.regions {
+        var sm = smoothed[did] ?? [:]
+        for region in wanted {
             let (rawR, rawG, rawB) = Self.regionAverage(ptr, w, h, bpr, region: region, band: bandFraction)
             let avg = (rawR + rawG + rawB) / 3, boost = saturation
             let r = min(255, max(0, avg + (rawR - avg) * boost))
             let g = min(255, max(0, avg + (rawG - avg) * boost))
             let b = min(255, max(0, avg + (rawB - avg) * boost))
-            var s = smoothedByRegion[region] ?? (r, g, b)
+            var s = sm[region] ?? (r, g, b)
             s.r += (r - s.r) * k; s.g += (g - s.g) * k; s.b += (b - s.b) * k
-            smoothedByRegion[region] = s
+            sm[region] = s
             let rgb = (Int(s.r) << 16) | (Int(s.g) << 8) | Int(s.b)
-            colors[region] = rgb
-            out.streamRegion(region, rgb: rgb)
-            if region == .top || previewRGB == 0 { previewRGB = rgb }
-            if region == .top || lumaFollow < 0 { lumaFollow = (0.299 * rawR + 0.587 * rawG + 0.114 * rawB) / 255 }
+            byRegion[region] = rgb
+            out.streamRegion(did, region, rgb: rgb)
+            if lumaFollow < 0 { lumaFollow = (0.299 * rawR + 0.587 * rawG + 0.114 * rawB) / 255 }
         }
+        smoothed[did] = sm
 
         frameCount += 1
         if frameCount % 3 == 0 {
-            let p = previewRGB, c = colors
-            DispatchQueue.main.async { self.onColor?(p); self.onRegionColors?(c) }
+            let snapshot = smoothed.mapValues { $0.mapValues { (Int($0.r) << 16) | (Int($0.g) << 8) | Int($0.b) } }
+            let preview = byRegion[.top] ?? byRegion.values.first ?? 0
+            DispatchQueue.main.async { self.onColor?(preview); self.onRegionColors?(snapshot) }
         }
         if frameCount % 10 == 0, lumaFollow >= 0 { let l = lumaFollow; DispatchQueue.main.async { self.onLuma?(l) } }
     }
