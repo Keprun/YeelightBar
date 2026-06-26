@@ -350,6 +350,8 @@ final class LampController: ObservableObject {
                         self.suppressRegionRestart = true
                         if let z = self.syncRegions.removeValue(forKey: oldIP) { self.syncRegions[match.ip] = z }
                         if let dz = self.syncDisplays.removeValue(forKey: oldIP) { self.syncDisplays[match.ip] = dz }
+                        if let sn = self.segmentCount.removeValue(forKey: oldIP) { self.segmentCount[match.ip] = sn }
+                        if let sr = self.segmentReversed.removeValue(forKey: oldIP) { self.segmentReversed[match.ip] = sr }
                         self.suppressRegionRestart = false
                     }
                     self.groupIPs = self.groupIPs.intersection(live).union([match.ip])
@@ -636,8 +638,9 @@ final class LampController: ObservableObject {
     func displayID(forLamp ip: String) -> CGDirectDisplayID { syncDisplays[ip] ?? CGMainDisplayID() }
     func setSyncDisplay(_ ip: String, _ displayID: CGDirectDisplayID) { syncDisplays[ip] = displayID }
 
-    /// Addressable strip = advertises set_segment_rgb (per-segment colour, via music mode).
-    func isAddressable(_ d: DiscoveredDevice) -> Bool { d.support.contains("set_segment_rgb") }
+    /// Addressable strip = advertises set_segment_rgb (per-segment colour, via music mode). Scan/manual
+    /// devices carry an empty support list, so fall back to the known addressable model.
+    func isAddressable(_ d: DiscoveredDevice) -> Bool { d.support.contains("set_segment_rgb") || d.model == "strip8" }
     func segments(forLamp ip: String) -> Int { segmentCount[ip] ?? 0 }
     func setSegments(_ ip: String, _ n: Int) { if n <= 0 { segmentCount.removeValue(forKey: ip) } else { segmentCount[ip] = max(2, n) } }
     func toggleSegmentReversed(_ ip: String) { segmentReversed[ip] = !(segmentReversed[ip] ?? false) }

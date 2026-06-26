@@ -20,6 +20,7 @@ public final class YeelightMusicSession {
     private var connFD: Int32 = -1
     private var running = false
     private var msgId = 1
+    private var attempts = 0
 
     /// `localIP` must be this machine's address on the same LAN as the lamp.
     public init(deviceIP: String, localIP: String, tcpPort: UInt16 = 55443, listenPort: UInt16 = 0) {
@@ -31,12 +32,21 @@ public final class YeelightMusicSession {
 
     public var isConnected: Bool { queue.sync { connFD >= 0 } }
 
+    deinit {
+        // best-effort: don't leave the lamp stuck in music mode or leak fds
+        if connFD >= 0 { close(connFD) }
+        if listenFD >= 0 { close(listenFD) }
+        _ = try? Self.quickCommand(ip: deviceIP, port: tcpPort, method: "set_music", params: [0])
+    }
+
     /// Open the listener and bring the lamp into music mode (connecting back to us). Non-blocking.
     public func start() {
         queue.async { [self] in
             guard !running else { return }
             running = true
-            openListenerAndConnect()
+            attempts = 0
+            openListener()
+            beginConnect()
         }
     }
 
@@ -68,52 +78,57 @@ public final class YeelightMusicSession {
 
     // MARK: - internals (all on `queue`)
 
-    private func openListenerAndConnect() {
-        guard running else { return }
-        if listenFD < 0 {
-            listenFD = socket(AF_INET, SOCK_STREAM, 0)
-            guard listenFD >= 0 else { retry(); return }
-            var reuse: Int32 = 1
-            setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout<Int32>.size))
-            var addr = sockaddr_in()
-            addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-            addr.sin_family = sa_family_t(AF_INET)
-            addr.sin_port = listenPort.bigEndian
-            addr.sin_addr.s_addr = INADDR_ANY
-            let bound = withUnsafePointer(to: &addr) {
-                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(listenFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
-            }
-            guard bound == 0, listen(listenFD, 1) == 0 else { close(listenFD); listenFD = -1; retry(); return }
+    /// Open a NON-BLOCKING listen socket once.
+    private func openListener() {
+        guard listenFD < 0 else { return }
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { return }
+        var reuse: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout<Int32>.size))
+        var addr = sockaddr_in()
+        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = listenPort.bigEndian
+        addr.sin_addr.s_addr = INADDR_ANY
+        let bound = withUnsafePointer(to: &addr) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
         }
+        guard bound == 0, listen(fd, 1) == 0 else { close(fd); return }
+        let fl = fcntl(fd, F_GETFL, 0); _ = fcntl(fd, F_SETFL, fl | O_NONBLOCK)
+        listenFD = fd
+    }
 
-        // ask the lamp to connect back to us
-        _ = try? Self.quickCommand(ip: deviceIP, port: tcpPort, method: "set_music", params: [1, localIP, Int(listenPort)])
-
-        // accept with a timeout so we can retry if the lamp doesn't dial in
-        var tv = timeval(tv_sec: 5, tv_usec: 0)
-        setsockopt(listenFD, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+    /// Non-blocking accept loop: polls briefly (so stop()/sends are never stalled), re-asking the
+    /// lamp to dial back every ~3 s, until it connects. Re-schedules itself on `queue`.
+    private func beginConnect() {
+        guard running, connFD < 0 else { return }
+        if listenFD < 0 { openListener() }
+        guard listenFD >= 0 else { queue.asyncAfter(deadline: .now() + 1.0) { [self] in beginConnect() }; return }
+        if attempts % 15 == 0 {   // re-assert music mode every ~3 s (15 × 200 ms), not on every poll
+            _ = try? Self.quickCommand(ip: deviceIP, port: tcpPort, method: "set_music", params: [1, localIP, Int(listenPort)])
+        }
+        attempts += 1
         var fds = pollfd(fd: listenFD, events: Int16(POLLIN), revents: 0)
-        guard poll(&fds, 1, 5000) > 0 else { retry(); return }
-        let fd = accept(listenFD, nil, nil)
-        guard fd >= 0 else { retry(); return }
-        connFD = fd
-        var nodelay: Int32 = 1
-        setsockopt(connFD, IPPROTO_TCP, TCP_NODELAY, &nodelay, socklen_t(MemoryLayout<Int32>.size))
+        if poll(&fds, 1, 200) > 0 {
+            let fd = accept(listenFD, nil, nil)
+            if fd >= 0 {
+                connFD = fd
+                var nodelay: Int32 = 1
+                setsockopt(connFD, IPPROTO_TCP, TCP_NODELAY, &nodelay, socklen_t(MemoryLayout<Int32>.size))
+                attempts = 0
+                return
+            }
+        }
+        queue.asyncAfter(deadline: .now() + 0.2) { [self] in beginConnect() }
     }
 
     private func send(method: String, params: [Any]) {
-        var obj: [String: Any] = ["id": msgId, "method": method, "params": params]
+        let obj: [String: Any] = ["id": msgId, "method": method, "params": params]
         msgId &+= 1; if msgId < 0 { msgId = 1 }
-        _ = obj  // keep type-checker happy if serialization fails below
         guard var data = try? JSONSerialization.data(withJSONObject: obj) else { return }
         data.append(contentsOf: [0x0d, 0x0a])
         let n = data.withUnsafeBytes { Darwin.send(connFD, $0.baseAddress, data.count, 0) }
-        if n <= 0 { close(connFD); connFD = -1; retry() }   // lamp dropped us → reconnect
-    }
-
-    private func retry() {
-        guard running else { return }
-        queue.asyncAfter(deadline: .now() + 1.5) { [self] in if running, connFD < 0 { openListenerAndConnect() } }
+        if n <= 0 { close(connFD); connFD = -1; if running { beginConnect() } }   // lamp dropped us → reconnect
     }
 
     /// One-off TCP JSON command on a throwaway socket (for set_music on/off).
