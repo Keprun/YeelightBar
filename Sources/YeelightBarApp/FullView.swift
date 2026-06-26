@@ -27,6 +27,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
 struct FullView: View {
     @ObservedObject var lamp: LampController
     @State private var section: AppSection = .control
+    @State private var assignTarget: CGDirectDisplayID?
 
     var body: some View {
         NavigationSplitView {
@@ -327,27 +328,42 @@ struct FullView: View {
                 ForEach(infos) { info in
                     let w = max(64, info.bounds.width * scale - 8)
                     let h = max(44, info.bounds.height * scale - 8)
-                    Menu {
-                        if groupLamps.isEmpty {
-                            Text("Сначала добавь лампы в группу (вкладка «Устройства»)")
-                        } else {
-                            ForEach(groupLamps, id: \.ip) { d in
-                                Button { lamp.setSyncDisplay(d.ip, info.id) } label: {
-                                    Label(name(d), systemImage: lamp.displayID(forLamp: d.ip) == info.id ? "checkmark" : "")
-                                }
-                            }
-                        }
-                    } label: {
-                        monitorBox(info, w: w, h: h)
-                    }
-                    .buttonStyle(.plain).menuStyle(.borderlessButton).menuIndicator(.hidden)
-                    .position(x: (info.bounds.minX - union.minX) * scale + info.bounds.width * scale / 2,
-                              y: (info.bounds.minY - union.minY) * scale + info.bounds.height * scale / 2)
+                    monitorBox(info, w: w, h: h)
+                        .onTapGesture { assignTarget = (assignTarget == info.id) ? nil : info.id }
+                        .popover(isPresented: Binding(get: { assignTarget == info.id },
+                                                      set: { if !$0 { assignTarget = nil } }),
+                                 arrowEdge: .bottom) { assignSheet(info) }
+                        .position(x: (info.bounds.minX - union.minX) * scale + info.bounds.width * scale / 2,
+                                  y: (info.bounds.minY - union.minY) * scale + info.bounds.height * scale / 2)
                 }
             }
             .frame(width: max(64, union.width * scale), height: max(44, union.height * scale), alignment: .topLeading)
             .padding(.vertical, 6)
         }
+    }
+
+    /// Tap-to-assign popover: pick which group lamps sample this monitor.
+    private func assignSheet(_ info: DisplayInfo) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Лампы на «\(info.short)»").font(.callout).bold()
+            Text("\(info.width)×\(info.height)" + (info.isMain ? " · основной" : "")).font(.caption).foregroundStyle(.secondary)
+            Divider()
+            if groupLamps.isEmpty {
+                Text("Сначала добавь лампы в группу\nна вкладке «Устройства»").font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(groupLamps, id: \.ip) { d in
+                    let here = lamp.displayID(forLamp: d.ip) == info.id
+                    Button { lamp.setSyncDisplay(d.ip, info.id) } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: here ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(here ? Color.accentColor : .secondary)
+                            Text(name(d))
+                            Spacer()
+                        }.contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                }
+            }
+        }.padding(14).frame(width: 250)
     }
 
     private func monitorBox(_ info: DisplayInfo, w: CGFloat, h: CGFloat) -> some View {
