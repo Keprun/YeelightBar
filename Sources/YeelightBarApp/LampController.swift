@@ -45,6 +45,9 @@ final class LampController: ObservableObject {
     private var pollTimer: Timer?
     private var pollMisses = 0
     private var pollEpoch = 0
+    /// All TCP control/read traffic to the connected lamp is serialized here — the bar drops a
+    /// command if two connections hit it at once (e.g. set_power + bg_set_power racing).
+    private let io = DispatchQueue(label: "yeelightbar.control")
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
     private let savedIDKey = "selectedDeviceID"
@@ -157,9 +160,9 @@ final class LampController: ObservableObject {
     func refresh() {
         guard let device else { connecting = false; return }
         let ip = selected?.ip ?? ""
-        Task.detached {
+        io.async {
             let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
-            await MainActor.run {
+            Task { @MainActor in
                 self.connecting = false
                 guard props.count >= 4 else {
                     self.connected = false
@@ -177,9 +180,9 @@ final class LampController: ObservableObject {
     /// Background re-read after a discrete action — never disconnects on a transient miss.
     private func pollState() {
         guard let device, connected else { return }
-        Task.detached {
+        io.async {
             let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
-            await MainActor.run { if props.count >= 4 { self.apply(props) } }
+            Task { @MainActor in if props.count >= 4 { self.apply(props) } }
         }
     }
 
@@ -202,9 +205,9 @@ final class LampController: ObservableObject {
         guard let device, connected else { return }
         let expectOn = power
         let epoch = pollEpoch
-        Task.detached {
+        io.async {
             let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
-            await MainActor.run {
+            Task { @MainActor in
                 guard self.connected, epoch == self.pollEpoch else { return }   // ignore stale/superseded reads
                 if props.count >= 4 {
                     self.pollMisses = 0
@@ -350,7 +353,7 @@ final class LampController: ObservableObject {
 
     private func push(_ op: @escaping (YeelightDevice) throws -> String) {
         guard let device else { return }
-        Task.detached { _ = try? op(device) }
+        io.async { _ = try? op(device) }
     }
 
     // MARK: - Screen sync (ambilight)
