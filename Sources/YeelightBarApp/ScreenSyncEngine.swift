@@ -96,9 +96,14 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
                 }
                 self.reportSource(display.width, display.height)
 
-                let capW = 128
-                let aspect = display.width > 0 ? Double(display.height) / Double(display.width) : 0.5625
-                let capH = max(8, Int((Double(capW) * aspect).rounded()))
+                // Resolution-independent capture: keep the display's EXACT aspect (no letterbox)
+                // and scale the longer edge to a fixed target, so sampling density is the same on a
+                // 16:9 laptop, a 4K panel, a portrait monitor, or a 32:9 5120×1440 ultrawide.
+                let dw = max(1, display.width), dh = max(1, display.height)
+                let scale = 192.0 / Double(max(dw, dh))
+                func even(_ x: Double) -> Int { let n = max(16, Int(x.rounded())); return n - (n % 2) }
+                let capW = even(Double(dw) * scale)
+                let capH = even(Double(dh) * scale)
                 let config = SCStreamConfiguration()
                 config.width = capW
                 config.height = capH
