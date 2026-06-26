@@ -76,6 +76,25 @@ public final class YeelightMusicSession {
         }
     }
 
+    /// Per-pixel frame over the fast music channel: one 0xRRGGBB per LED in physical order. The strip
+    /// must be in direct FX mode (see `reactivateDirectMode`); this is the high-rate path for the
+    /// `update_leds` protocol, bypassing the ~60 cmd/min TCP quota.
+    public func sendLEDs(_ pixels: [Int]) {
+        queue.async { [self] in
+            guard connFD >= 0 else { return }
+            send(method: "update_leds", params: [YeelightDevice.packLEDs(pixels)])
+        }
+    }
+
+    /// Re-assert "direct" FX mode over the music channel — it expires ~25 s after activation, so call
+    /// this right after connecting and every ~15–20 s while streaming `update_leds` frames.
+    public func reactivateDirectMode() {
+        queue.async { [self] in
+            guard connFD >= 0 else { return }
+            send(method: "activate_fx_mode", params: [["mode": "direct"]])
+        }
+    }
+
     // MARK: - internals (all on `queue`)
 
     /// Open a NON-BLOCKING listen socket once.

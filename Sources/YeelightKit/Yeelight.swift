@@ -153,6 +153,57 @@ public final class YeelightDevice {
         return result.map { "\($0)" }
     }
 
+    // MARK: - Addressable strip: direct per-pixel mode (strip8)
+
+    /// Switch an addressable strip into "direct" FX mode — required before `updateLEDs`. Direct mode
+    /// silently expires ~25 s after activation, so re-send it periodically while streaming. Returns the
+    /// raw reply; classify it with `Self.replyOK(_:)` / `Self.replyError(_:)` — strip8 does NOT advertise
+    /// this method in SSDP and may answer `-1 "method not supported"`, so probe it before relying on it.
+    @discardableResult
+    public func activateDirectMode() throws -> String {
+        try control("activate_fx_mode", [["mode": "direct"]])
+    }
+
+    /// One per-pixel frame for a strip already in direct mode: `pixels` is one 0xRRGGBB per LED in
+    /// physical order. Returns the raw reply (see `Self.replyOK(_:)`).
+    @discardableResult
+    public func updateLEDs(_ pixels: [Int]) throws -> String {
+        try control("update_leds", [Self.packLEDs(pixels)])
+    }
+
+    /// Pack one 0xRRGGBB-per-LED frame into the base64 wire form `update_leds` expects. Equivalent to
+    /// the Python reference's per-LED `b64encode(bytes([r,g,b]))` concatenation: N LEDs = 3N bytes,
+    /// always a multiple of 3, so base64 of the whole buffer carries no interior padding and matches
+    /// the 4-chars-per-LED concatenation exactly.
+    public static func packLEDs(_ pixels: [Int]) -> String {
+        var bytes = [UInt8](); bytes.reserveCapacity(pixels.count * 3)
+        for p in pixels {
+            bytes.append(UInt8((p >> 16) & 0xFF))
+            bytes.append(UInt8((p >> 8) & 0xFF))
+            bytes.append(UInt8(p & 0xFF))
+        }
+        return Data(bytes).base64EncodedString()
+    }
+
+    /// True iff `reply` is a JSON-RPC success (`"result":[...]`). Distinguishes a real "ok" from an
+    /// error reply OR an empty/timed-out read (both return false) — use to decide if a method works.
+    public static func replyOK(_ reply: String) -> Bool {
+        guard let d = reply.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return false }
+        return obj["result"] != nil
+    }
+
+    /// JSON-RPC error text if `reply` is an `{"error":{…}}` response, else nil (success / notification /
+    /// junk). Use to read the "-1 method not supported" a strip returns when it rejects `update_leds`.
+    public static func replyError(_ reply: String) -> String? {
+        guard let d = reply.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+              let err = obj["error"] as? [String: Any] else { return nil }
+        let code = err["code"].map { "\($0)" } ?? "?"
+        let msg = err["message"] as? String ?? "error"
+        return "\(msg) (code \(code))"
+    }
+
     // MARK: - UDP streaming session (screen-sync transport)
 
     /// Opens the UDP session and acquires the streaming token. Call before `stream(rgb:)`.
