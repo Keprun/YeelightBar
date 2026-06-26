@@ -33,7 +33,8 @@ final class LampController: ObservableObject {
     @Published var syncSaturation: Double = 1.25 { didSet { sync.saturation = syncSaturation } }
     @Published var musicSensitivity: Double = 4.0 { didSet { music.sensitivity = musicSensitivity } }
     @Published var musicStyle: MusicStyle = .beat { didSet { music.style = musicStyle } }
-    @Published var syncRegions: [String: SyncRegion] = [:] { didSet { if screenSyncOn || musicSyncOn { restartSync() } } }
+    @Published var syncRegions: [String: SyncRegion] = [:] { didSet { if !suppressRegionRestart, screenSyncOn || musicSyncOn { restartSync() } } }
+    private var suppressRegionRestart = false   // set while a group edit handles its own single restart
     @Published var power = false
     @Published var brightness = 50.0      // 1…100
     @Published var colorTempK = 4000.0    // 2700…6500
@@ -100,6 +101,7 @@ final class LampController: ObservableObject {
             let found = YeelightDiscovery.auto()
             await MainActor.run {
                 self.devices = found
+                self.reconcileGroup(against: found)   // drop any grouped lamp that vanished from the scan
                 self.isSearching = false
             }
         }
@@ -177,18 +179,42 @@ final class LampController: ObservableObject {
                     selected = nil; device = nil; connected = false
                 }
             }
+            suppressRegionRestart = true        // the single restart below covers this removal
             syncRegions.removeValue(forKey: d.ip)
+            suppressRegionRestart = false
         } else {
             groupIPs.insert(d.ip)
             if selected == nil { setPrimary(d) }
         }
-        if screenSyncOn || musicSyncOn { restartSync() }   // keep a running effect in sync with the group
+        if screenSyncOn || musicSyncOn { restartSync() }   // one restart re-targets a running effect
     }
 
     /// Make an already-grouped device the primary (whose state the sliders/toggles reflect).
     func makePrimary(_ d: DiscoveredDevice) {
         guard groupIPs.contains(d.ip), selected?.ip != d.ip else { return }
         setPrimary(d)
+    }
+
+    /// After the device list is replaced by a (re)scan, drop group members / a primary that
+    /// vanished — otherwise they linger as phantom IPs (un-removable in the UI, silent no-op
+    /// in fanOut, and a stuck "connected" header if the primary itself disappeared).
+    private func reconcileGroup(against found: [DiscoveredDevice]) {
+        let live = Set(found.map { $0.ip })
+        let before = groupIPs
+        groupIPs.formIntersection(live)
+        suppressRegionRestart = true
+        syncRegions = syncRegions.filter { live.contains($0.key) }
+        suppressRegionRestart = false
+        if let sel = selected, !live.contains(sel.ip) {       // primary itself vanished
+            if let nip = groupIPs.first, let next = found.first(where: { $0.ip == nip }) {
+                setPrimary(next)
+            } else {
+                pollTimer?.invalidate(); pollTimer = nil
+                stopScreenSync(); stopMusicSync()
+                selected = nil; device = nil; connected = false
+            }
+        }
+        if groupIPs != before, screenSyncOn || musicSyncOn { restartSync() }
     }
 
     func backToDevices() { pollTimer?.invalidate(); pollTimer = nil; connected = false }
@@ -199,6 +225,7 @@ final class LampController: ObservableObject {
         io.async {
             let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
             Task { @MainActor in
+                guard self.selected?.ip == ip else { return }   // primary re-pointed / group emptied mid-read
                 self.connecting = false
                 guard props.count >= 4 else {
                     self.connected = false
@@ -272,11 +299,21 @@ final class LampController: ObservableObject {
             let found = YeelightDiscovery.auto()
             await MainActor.run {
                 self.isSearching = false
+                let oldIP = self.selected?.ip
                 self.devices = found
+                let live = Set(found.map { $0.ip })
                 let match = found.first(where: { !savedID.isEmpty && $0.id == savedID })
                          ?? found.first(where: { !savedIP.isEmpty && $0.ip == savedIP })
                 if let match {
-                    self.connect(to: match)
+                    // Re-point the primary WITHOUT wiping the group; on a DHCP change carry its zone
+                    // to the new IP, and drop any other members that didn't come back in the scan.
+                    if let oldIP, oldIP != match.ip {
+                        self.suppressRegionRestart = true
+                        if let z = self.syncRegions.removeValue(forKey: oldIP) { self.syncRegions[match.ip] = z }
+                        self.suppressRegionRestart = false
+                    }
+                    self.groupIPs = self.groupIPs.intersection(live).union([match.ip])
+                    self.setPrimary(match)
                 } else {
                     self.connectError = "Лампа не в сети. Нажми «Автопоиск», когда она вернётся."
                 }
@@ -481,6 +518,12 @@ final class LampController: ObservableObject {
         (d.support.contains("bg_set_rgb") || d.model == "lamp15") ? "bg_set_rgb" : "set_rgb"
     }
 
+    /// Turn the colour channel on for every current group member (a lamp just added mid-sync
+    /// has its UDP stream opened but is never powered on otherwise → would stay dark).
+    private func ensureColourChannelsOn() {
+        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", ["on", "smooth", 200]) }
+    }
+
     private func restartSync() {
         if screenSyncOn {
             let t = syncTargets()
@@ -488,10 +531,11 @@ final class LampController: ObservableObject {
                 stopScreenSync()
                 screenSyncStatus = "Назначь зону экрана хотя бы одной лампе."
             } else {
+                ensureColourChannelsOn()
                 sync.stop(); sync.start(targets: t)
             }
         }
-        if musicSyncOn { music.stop(); music.start(targets: syncTargets()) }
+        if musicSyncOn { ensureColourChannelsOn(); music.stop(); music.start(targets: syncTargets()) }
     }
 
     // MARK: - Effect mode (single off / screen / music selector)
