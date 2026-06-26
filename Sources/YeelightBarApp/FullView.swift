@@ -295,57 +295,86 @@ struct FullView: View {
         }
     }
 
-    // MARK: live multi-display capture preview
+    // MARK: live monitor-arrangement map
 
-    /// One screen-shaped panel per display that group lamps sample, each zone filled with the live
-    /// colour currently streamed to its lamp(s), sized by the «Размер зоны» band fraction.
+    private var groupLamps: [DiscoveredDevice] { lamp.devices.filter { lamp.groupIPs.contains($0.ip) } }
+
+    /// A native "Displays" map: every connected monitor drawn in its real arrangement and to scale,
+    /// numbered «Монитор N», showing the live zones of the lamps assigned to it. Click a monitor to
+    /// assign which group lamps sample it — so with 3 monitors and 3 lamps you just see and tap.
     private var screenPreview: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(lamp.displays.count > 1 ? "Что захватывается с экранов" : "Что захватывается с экрана")
-                .font(.callout).foregroundStyle(.secondary)
-            let active = activeDisplays
-            if active.isEmpty {
-                Text("Назначь лампам экран и зону ниже ↓").font(.caption).foregroundStyle(.secondary)
-            } else {
-                ForEach(active) { info in displayPreview(info) }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Подключено мониторов: \(lamp.displays.count)").font(.callout).foregroundStyle(.secondary)
+                Spacer()
+                Button { lamp.refreshDisplays() } label: { Image(systemName: "arrow.clockwise") }
+                    .buttonStyle(.borderless).help("Обновить список мониторов")
             }
-            Text("Зоны закрашены живым цветом, который уходит на лампу. Толщина полос = «Размер зоны».")
-                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("Нажми на монитор, чтобы выбрать, какая лампа берёт с него цвет.")
+                .font(.caption2).foregroundStyle(.secondary)
+            displaysMap
         }
     }
 
-    /// Displays that at least one group lamp samples (deduped, in the system display order).
-    private var activeDisplays: [DisplayInfo] {
-        let used = Set(lamp.devices.filter { lamp.groupIPs.contains($0.ip) }.map { lamp.displayID(forLamp: $0.ip) })
-        return lamp.displays.filter { used.contains($0.id) }
-    }
-
-    private func displayPreview(_ info: DisplayInfo) -> some View {
-        let W: CGFloat = 360
-        let aspect = info.width > 0 ? CGFloat(info.height) / CGFloat(info.width) : 0.5625
-        let H = max(90, W * aspect)
-        let zones = zonesOn(info.id)
-        let colors = lamp.regionColors[info.id] ?? [:]
-        return VStack(alignment: .leading, spacing: 4) {
-            Text(info.label).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
-            ZStack {
-                RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
-                ForEach(zones, id: \.region) { z in
-                    let f = zoneFrac(z.region)
-                    ZStack {
-                        Rectangle().fill(colors[z.region] ?? Color.gray.opacity(0.4))
-                        Rectangle().stroke(Color.white.opacity(0.55), lineWidth: 1)
-                        Text(z.label).font(.caption2).bold().foregroundStyle(.white)
-                            .padding(.horizontal, 4).padding(.vertical, 1)
-                            .background(.black.opacity(0.4), in: Capsule()).fixedSize()
+    @ViewBuilder private var displaysMap: some View {
+        let infos = lamp.displays
+        if infos.isEmpty {
+            Text("Мониторы не найдены").font(.caption).foregroundStyle(.secondary)
+        } else {
+            let union = infos.dropFirst().reduce(infos[0].bounds) { $0.union($1.bounds) }
+            let scale = max(0.0001, min(540 / max(1, union.width), 230 / max(1, union.height)))
+            ZStack(alignment: .topLeading) {
+                ForEach(infos) { info in
+                    Menu {
+                        if groupLamps.isEmpty {
+                            Text("Сначала добавь лампы в группу (вкладка «Устройства»)")
+                        } else {
+                            ForEach(groupLamps, id: \.ip) { d in
+                                Button { lamp.setSyncDisplay(d.ip, info.id) } label: {
+                                    Label(name(d), systemImage: lamp.displayID(forLamp: d.ip) == info.id ? "checkmark" : "")
+                                }
+                            }
+                        }
+                    } label: {
+                        monitorBox(info)
                     }
-                    .frame(width: W * f.w, height: H * f.h)
-                    .position(x: W * (f.x + f.w / 2), y: H * (f.y + f.h / 2))
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).buttonStyle(.plain)
+                    .frame(width: max(46, info.bounds.width * scale - 4), height: max(30, info.bounds.height * scale - 4))
+                    .position(x: (info.bounds.minX - union.minX) * scale + info.bounds.width * scale / 2,
+                              y: (info.bounds.minY - union.minY) * scale + info.bounds.height * scale / 2)
                 }
             }
-            .frame(width: W, height: H)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.3)))
+            .frame(width: union.width * scale, height: union.height * scale, alignment: .topLeading)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func monitorBox(_ info: DisplayInfo) -> some View {
+        let zones = zonesOn(info.id)
+        let colors = lamp.regionColors[info.id] ?? [:]
+        return GeometryReader { geo in
+            let W = geo.size.width, H = geo.size.height
+            ZStack {
+                RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.88))
+                ForEach(zones, id: \.region) { z in
+                    let f = zoneFrac(z.region)
+                    Rectangle().fill(colors[z.region] ?? Color.gray.opacity(0.35))
+                        .frame(width: W * f.w, height: H * f.h)
+                        .position(x: W * (f.x + f.w / 2), y: H * (f.y + f.h / 2))
+                }
+                VStack(spacing: 1) {
+                    Text("\(info.index)").font(.headline).bold().foregroundStyle(.white)
+                    Text("\(info.width)×\(info.height)").font(.system(size: 8)).monospacedDigit().foregroundStyle(.white.opacity(0.85))
+                    if zones.isEmpty {
+                        Text(info.isMain ? "основной · нет ламп" : "нет ламп").font(.system(size: 8)).foregroundStyle(.white.opacity(0.5))
+                    } else {
+                        Text(zones.map(\.label).joined(separator: " · ")).font(.system(size: 8)).foregroundStyle(.white).lineLimit(1)
+                    }
+                }.padding(2)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6)
+                .stroke(info.isMain ? Color.blue.opacity(0.8) : Color.secondary.opacity(0.45), lineWidth: info.isMain ? 2 : 1))
         }
     }
 
@@ -360,7 +389,7 @@ struct FullView: View {
     }
 
     private func displayShort(_ did: CGDirectDisplayID) -> String {
-        lamp.displays.first(where: { $0.id == did }).map { "\($0.width)×\($0.height)" } ?? "экран"
+        lamp.displays.first(where: { $0.id == did })?.short ?? "экран"
     }
 
     private func zoneFrac(_ r: SyncRegion) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {

@@ -245,7 +245,6 @@ struct MenuPanelView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Источник цвета").font(.caption).foregroundStyle(.secondary)
                         Text("верх \(Int(lamp.bandFraction * 100))% экрана").font(.caption2)
-                        if let info = lamp.captureInfo { Text("дисплей \(info)").font(.caption2).foregroundStyle(.secondary) }
                         HStack(spacing: 5) {
                             RoundedRectangle(cornerRadius: 3).fill(lamp.syncColor).frame(width: 18, height: 18)
                                 .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.secondary.opacity(0.3)))

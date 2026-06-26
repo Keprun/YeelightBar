@@ -7,9 +7,13 @@ enum SyncMode: Hashable { case off, screen, music }
 
 struct DisplayInfo: Identifiable, Hashable {
     let id: CGDirectDisplayID
+    let index: Int            // 1-based, stable left→right numbering ("Монитор N")
     let width: Int
     let height: Int
-    let label: String
+    let bounds: CGRect        // real position in the global display arrangement
+    let isMain: Bool
+    var short: String { "Монитор \(index)" }
+    var label: String { "Монитор \(index) · \(width)×\(height)" + (isMain ? " · основной" : "") }
 }
 
 /// Bridges SwiftUI to YeelightKit: device finding + live control.
@@ -32,7 +36,6 @@ final class LampController: ObservableObject {
     @Published var musicSyncStatus: String?
     @Published var syncColor = Color(rgb: 0x000000)
     @Published var regionColors: [CGDirectDisplayID: [SyncRegion: Color]] = [:]   // live colour per display+zone
-    @Published var captureInfo: String?
     @Published var screenHasPermission = false
     @Published var displays: [DisplayInfo] = []
     /// Which display each lamp samples for screen-sync (per-lamp; unset → main display).
@@ -69,8 +72,14 @@ final class LampController: ObservableObject {
 
     init() {
         sync.onState = { [weak self] running, err in self?.screenSyncOn = running; self?.screenSyncStatus = err }
-        sync.onColor = { [weak self] rgb in self?.syncColor = Color(rgb: rgb) }
-        sync.onRegionColors = { [weak self] d in self?.regionColors = d.mapValues { $0.mapValues { Color(rgb: $0) } } }
+        sync.onRegionColors = { [weak self] d in
+            guard let self else { return }
+            self.regionColors = d.mapValues { $0.mapValues { Color(rgb: $0) } }
+            // mini-panel swatch follows the PRIMARY lamp's own (display, region), not whichever fired last
+            if let ip = self.selected?.ip, let rgb = d[self.displayID(forLamp: ip)]?[self.syncRegions[ip] ?? .top] {
+                self.syncColor = Color(rgb: rgb)
+            }
+        }
         sync.onLuma = { [weak self] luma in self?.applyLuma(luma) }
         sync.bandFraction = bandFraction
         sync.smoothing = syncSmoothing
@@ -81,6 +90,11 @@ final class LampController: ObservableObject {
         music.style = musicStyle
         refreshScreenPermission()
         refreshDisplays()
+        // react live to a monitor being plugged in / unplugged / rearranged
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.refreshDisplays() }
+        }
         restoreOnLaunch()
     }
 
@@ -586,9 +600,14 @@ final class LampController: ObservableObject {
         CGGetActiveDisplayList(n, &ids, &n)
         ids = Array(ids.prefix(Int(n)))
         let main = CGMainDisplayID()
-        displays = ids.map { id in
-            DisplayInfo(id: id, width: CGDisplayPixelsWide(id), height: CGDisplayPixelsHigh(id),
-                        label: "\(CGDisplayPixelsWide(id))×\(CGDisplayPixelsHigh(id))" + (id == main ? " · основной" : ""))
+        // order left→right (then top→bottom) so "Монитор N" numbering matches the physical layout
+        let sorted = ids.sorted { a, b in
+            let ba = CGDisplayBounds(a), bb = CGDisplayBounds(b)
+            return ba.minX != bb.minX ? ba.minX < bb.minX : ba.minY < bb.minY
+        }
+        displays = sorted.enumerated().map { i, id in
+            DisplayInfo(id: id, index: i + 1, width: CGDisplayPixelsWide(id), height: CGDisplayPixelsHigh(id),
+                        bounds: CGDisplayBounds(id), isMain: id == main)
         }
         // a lamp pinned to a now-unplugged screen falls back to main (drop the stale mapping)
         let live = Set(ids)
