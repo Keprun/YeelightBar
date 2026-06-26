@@ -16,6 +16,7 @@ func usage() {
       yeectl ct      <ip> <kelvin 1700-6500>
       yeectl rgb     <ip> <hex e.g. FF8800>     (ambient / bg channel)
       yeectl rainbow <ip> [seconds]             (UDP 20Hz streaming test)
+      yeectl seg     <ip> [count] [seconds]     (addressable strip: music-mode segment rainbow)
     """)
 }
 
@@ -105,6 +106,27 @@ do {
         print("streamed \(frames) frames (~\(Int(Double(frames) / secs)) Hz)")
         _ = try? dev.setAmbientRGB(before ?? 0xE30DFF) // restore
         print("restored ambient")
+
+    case "seg":
+        let n = (args.count >= 4 ? Int(args[3]) : nil) ?? 12
+        let secs = (args.count >= 5 ? Double(args[4]) : nil) ?? 15
+        guard let myip = YeelightMusicSession.localLANAddress() else { print("no LAN IPv4 found"); exit(1) }
+        let sess = YeelightMusicSession(deviceIP: args[2], localIP: myip)
+        sess.start()
+        print("music session → \(args[2]) from \(myip): \(n) segments, \(secs)s flowing rainbow…")
+        let t0 = Date()
+        while !sess.isConnected && Date().timeIntervalSince(t0) < 6 { usleep(100_000) }
+        print(sess.isConnected ? "  lamp connected ✓" : "  not yet connected (will keep retrying)")
+        let start = Date(); var frames = 0
+        while Date().timeIntervalSince(start) < secs {
+            let phase = Date().timeIntervalSince(start) * 0.15
+            let colors = (0..<n).map { i in hsv2rgb((Double(i) / Double(n) + phase).truncatingRemainder(dividingBy: 1.0), 1, 1) }
+            sess.sendSegments(colors)
+            frames += 1
+            usleep(60_000) // ~16 Hz
+        }
+        sess.stop()
+        print("streamed \(frames) segment-frames (~\(Int(Double(frames) / secs)) Hz), session stopped")
 
     default:
         usage(); exit(1)
