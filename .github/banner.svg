@@ -1,0 +1,25 @@
+<svg width="100%" viewBox="0 0 1200 300" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>YeelightBar</title>
+<desc>Razer-styled banner: neon-green YEELIGHTBAR wordmark over a rainbow addressable light strip on a dark background.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A0C0A"/><stop offset="1" stop-color="#141814"/></linearGradient>
+<radialGradient id="glow" cx="0.5" cy="0.05" r="0.85"><stop offset="0" stop-color="#44D62C" stop-opacity="0.22"/><stop offset="1" stop-color="#44D62C" stop-opacity="0"/></radialGradient>
+<linearGradient id="strip" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0.00" stop-color="#FF2D2D"/><stop offset="0.12" stop-color="#FF7A00"/><stop offset="0.24" stop-color="#FFD400"/><stop offset="0.36" stop-color="#B6FF1A"/><stop offset="0.46" stop-color="#44D62C"/><stop offset="0.58" stop-color="#00E0B0"/><stop offset="0.70" stop-color="#00A8FF"/><stop offset="0.82" stop-color="#5B5BFF"/><stop offset="0.92" stop-color="#9A2CFF"/><stop offset="1.00" stop-color="#FF2CB0"/>
+</linearGradient>
+<pattern id="scan" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="1" fill="#000000" fill-opacity="0.16"/></pattern>
+<pattern id="seg" width="50" height="30" patternUnits="userSpaceOnUse"><line x1="50" y1="0" x2="50" y2="30" stroke="#0A0C0A" stroke-opacity="0.6" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="300" fill="url(#bg)"/>
+<rect width="1200" height="300" fill="url(#glow)"/>
+<rect width="1200" height="300" fill="url(#scan)"/>
+<path d="M34 12 L1188 12 L1188 266 L1166 288 L12 288 L12 34 Z" fill="none" stroke="#44D62C" stroke-opacity="0.4" stroke-width="1.5"/>
+<path d="M12 64 L12 34 L42 34" fill="none" stroke="#44D62C" stroke-width="3"/>
+<path d="M1188 236 L1188 266 L1158 266" fill="none" stroke="#44D62C" stroke-width="3"/>
+<text x="600" y="132" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="74" font-weight="900" letter-spacing="9" fill="#EAF2E8">YEELIGHT<tspan fill="#44D62C">BAR</tspan></text>
+<text x="600" y="166" text-anchor="middle" font-family="Consolas, monospace" font-size="13" font-weight="700" letter-spacing="5" fill="#6E8C66">// LAN-ONLY · NO CLOUD · SwiftUI</text>
+<rect x="250" y="186" width="700" height="30" rx="15" fill="url(#strip)"/>
+<rect x="250" y="186" width="700" height="30" rx="15" fill="url(#seg)"/>
+<rect x="250" y="186" width="700" height="30" rx="15" fill="none" stroke="#44D62C" stroke-opacity="0.55" stroke-width="1.5"/>
+<text x="600" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" font-weight="800" letter-spacing="4" fill="#8FE57C">AMBILIGHT · MUSIC · MULTI-LAMP · ADDRESSABLE · macOS</text>
+</svg>

@@ -1,4 +1,15 @@
-# YeelightBar
+<p align="center">
+  <img src=".github/banner.svg" alt="YeelightBar" width="840">
+</p>
+
+<p align="center">
+  <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-0A0C0A?style=flat-square&logo=apple&logoColor=44D62C&labelColor=0A0C0A">
+  <img alt="Swift 5.9" src="https://img.shields.io/badge/Swift-5.9-44D62C?style=flat-square&logo=swift&logoColor=white&labelColor=0A0C0A">
+  <img alt="SwiftUI" src="https://img.shields.io/badge/UI-SwiftUI-44D62C?style=flat-square&labelColor=0A0C0A">
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-44D62C?style=flat-square&labelColor=0A0C0A">
+  <img alt="LAN only" src="https://img.shields.io/badge/cloud-none%20%C2%B7%20LAN%20only-44D62C?style=flat-square&labelColor=0A0C0A">
+  <img alt="Stars" src="https://img.shields.io/github/stars/VFI-Tech/YeelightBar?style=flat-square&labelColor=0A0C0A&color=44D62C">
+</p>
 
 [English](README.md) · [Русский](README.ru.md) · [中文](README.zh-CN.md) · [فارسی](README.fa.md) · **Español** · [العربية](README.ar.md)
 

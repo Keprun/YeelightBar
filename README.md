@@ -1,12 +1,32 @@
-# YeelightBar
+<p align="center">
+  <img src=".github/banner.svg" alt="YeelightBar" width="840">
+</p>
 
-**English** · [Русский](README.ru.md) · [中文](README.zh-CN.md) · [فارسی](README.fa.md) · [Español](README.es.md) · [العربية](README.ar.md)
+<p align="center">
+  <img alt="macOS 13+" src="https://img.shields.io/badge/macOS-13%2B-0A0C0A?style=flat-square&logo=apple&logoColor=44D62C&labelColor=0A0C0A">
+  <img alt="Swift 5.9" src="https://img.shields.io/badge/Swift-5.9-44D62C?style=flat-square&logo=swift&logoColor=white&labelColor=0A0C0A">
+  <img alt="SwiftUI" src="https://img.shields.io/badge/UI-SwiftUI-44D62C?style=flat-square&labelColor=0A0C0A">
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-44D62C?style=flat-square&labelColor=0A0C0A">
+  <img alt="LAN only" src="https://img.shields.io/badge/cloud-none%20%C2%B7%20LAN%20only-44D62C?style=flat-square&labelColor=0A0C0A">
+  <img alt="Stars" src="https://img.shields.io/github/stars/VFI-Tech/YeelightBar?style=flat-square&labelColor=0A0C0A&color=44D62C">
+</p>
 
-A native macOS app for controlling **Yeelight** LAN devices — built for the **Yeelight Screen Light Bar Pro**
-(`YLTD003`), but it drives plain RGB strips and bulbs too. The official software is Windows-only; this is a clean,
-fast SwiftUI replacement with screen-sync ambilight, music reactivity, and multi-lamp group control.
+<p align="center">
+  <b>English</b> ·
+  <a href="README.ru.md">Русский</a> ·
+  <a href="README.zh-CN.md">中文</a> ·
+  <a href="README.fa.md">فارسی</a> ·
+  <a href="README.es.md">Español</a> ·
+  <a href="README.ar.md">العربية</a>
+</p>
 
-> No cloud, no account. Everything happens over your LAN.
+<p align="center">
+  <i>A native macOS app for <b>Yeelight</b> LAN lamps — screen-sync ambilight (multi-display + per-segment<br>
+  addressable strips), music reactivity, and multi-lamp groups. Built for the <b>Screen Light Bar Pro</b>,<br>
+  it drives plain RGB strips &amp; bulbs too.</i>
+</p>
+
+<p align="center"><b>No cloud · no account · everything over your LAN.</b></p>
 
 ## Features
 
