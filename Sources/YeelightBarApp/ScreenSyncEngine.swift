@@ -52,6 +52,7 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
     var bandFraction: Double = 0.25
     var smoothing: Double = 0.35
     var saturation: Double = 1.25
+    var preferredDisplayID: CGDirectDisplayID = 0   // 0 → main display; else capture this specific screen
 
     private var stream: SCStream?
     private var out: SyncOutput?
@@ -91,7 +92,10 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
                     self.report(false, "Нет доступа к захвату экрана. Разреши «Запись экрана» и перезапусти приложение.")
                     return
                 }
-                guard let display = content?.displays.first(where: { $0.displayID == CGMainDisplayID() }) ?? content?.displays.first else {
+                let want = self.preferredDisplayID
+                guard let display = content?.displays.first(where: { $0.displayID == want && want != 0 })
+                                 ?? content?.displays.first(where: { $0.displayID == CGMainDisplayID() })
+                                 ?? content?.displays.first else {
                     self.teardown(); self.report(false, "Не найден дисплей для захвата."); return
                 }
                 self.reportSource(display.width, display.height)

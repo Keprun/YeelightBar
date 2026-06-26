@@ -5,6 +5,13 @@ import YeelightKit
 
 enum SyncMode: Hashable { case off, screen, music }
 
+struct DisplayInfo: Identifiable, Hashable {
+    let id: CGDirectDisplayID
+    let width: Int
+    let height: Int
+    let label: String
+}
+
 /// Bridges SwiftUI to YeelightKit: device finding + live control.
 @MainActor
 final class LampController: ObservableObject {
@@ -27,6 +34,14 @@ final class LampController: ObservableObject {
     @Published var regionColors: [SyncRegion: Color] = [:]   // live colour sampled per screen zone
     @Published var captureInfo: String?
     @Published var screenHasPermission = false
+    @Published var displays: [DisplayInfo] = []
+    @Published var captureDisplayID: CGDirectDisplayID = 0 {
+        didSet {
+            sync.preferredDisplayID = captureDisplayID
+            if let d = displays.first(where: { $0.id == captureDisplayID }) { captureInfo = "\(d.width)×\(d.height)" }
+            if screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) }   // recapture from the chosen screen
+        }
+    }
     @Published var bandFraction: Double = 0.25 { didSet { sync.bandFraction = bandFraction } }
     @Published var brightnessFollow = false
     @Published var syncSmoothing: Double = 0.35 { didSet { sync.smoothing = syncSmoothing } }
@@ -69,6 +84,8 @@ final class LampController: ObservableObject {
         music.sensitivity = musicSensitivity
         music.style = musicStyle
         refreshScreenPermission()
+        refreshDisplays()
+        sync.preferredDisplayID = captureDisplayID   // didSet doesn't fire during init
         restoreOnLaunch()
     }
 
@@ -558,6 +575,23 @@ final class LampController: ObservableObject {
 
     func refreshScreenPermission() {
         screenHasPermission = CGPreflightScreenCaptureAccess()
+    }
+
+    /// Enumerate attached displays (synchronous CoreGraphics — no Screen-Recording permission needed)
+    /// so the user can choose which screen to sync from. Falls back to main if the choice disappears.
+    func refreshDisplays() {
+        var n: UInt32 = 0
+        CGGetActiveDisplayList(0, nil, &n)
+        guard n > 0 else { displays = []; return }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(n))
+        CGGetActiveDisplayList(n, &ids, &n)
+        ids = Array(ids.prefix(Int(n)))
+        let main = CGMainDisplayID()
+        displays = ids.map { id in
+            DisplayInfo(id: id, width: CGDisplayPixelsWide(id), height: CGDisplayPixelsHigh(id),
+                        label: "\(CGDisplayPixelsWide(id))×\(CGDisplayPixelsHigh(id))" + (id == main ? " · основной" : ""))
+        }
+        if captureDisplayID == 0 || !ids.contains(captureDisplayID) { captureDisplayID = main }
     }
 
     func openScreenSettings() {

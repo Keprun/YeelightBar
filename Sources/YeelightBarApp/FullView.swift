@@ -49,7 +49,7 @@ struct FullView: View {
             .navigationTitle(section.title)
         }
         .frame(minWidth: 820, idealWidth: 880, minHeight: 580, idealHeight: 680)
-        .onAppear { lamp.refreshScreenPermission() }
+        .onAppear { lamp.refreshScreenPermission(); lamp.refreshDisplays() }
     }
 
     private var sidebarHeader: some View {
@@ -172,6 +172,17 @@ struct FullView: View {
             }
 
             if lamp.syncMode == .screen {
+                if lamp.displays.count > 1 {
+                    HStack {
+                        Text("Захват с экрана").font(.callout).foregroundStyle(.secondary)
+                        Picker("", selection: $lamp.captureDisplayID) {
+                            ForEach(lamp.displays) { d in Text(d.label).tag(d.id) }
+                        }.labelsHidden().fixedSize()
+                        Button { lamp.refreshDisplays() } label: { Image(systemName: "arrow.clockwise") }
+                            .buttonStyle(.borderless).help("Обновить список экранов")
+                        Spacer()
+                    }
+                }
                 screenPreview
                 GroupBox("Зона экрана для каждой лампы группы") {
                     VStack(alignment: .leading, spacing: 10) {
