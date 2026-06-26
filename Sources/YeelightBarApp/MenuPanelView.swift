@@ -16,7 +16,7 @@ struct MenuPanelView: View {
             if lamp.connected { controlPanel } else { finder }
         }
         .frame(width: 340)
-        .background(Color.razerBG)
+        .background(RazerBackground())
         .razerChrome()
     }
 
@@ -56,12 +56,13 @@ struct MenuPanelView: View {
             heroHeader
             HStack {
                 Spacer()
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LinearGradient(colors: [.white, warmthColor(lamp.colorTempK)], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 250, height: 18)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.06)))
-                    .shadow(color: warmthColor(lamp.colorTempK).opacity(lamp.power ? (0.18 + 0.5 * lamp.brightness / 100) : 0.0), radius: 16, y: 7)
-                    .shadow(color: glowColor.opacity(lamp.power ? 0.4 : 0.0), radius: 20, y: -3)
+                Capsule()
+                    .fill(LinearGradient(colors: [warmthColor(lamp.colorTempK), glowColor], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 250, height: 9)
+                    .overlay(Capsule().stroke(Color.razerGreen.opacity(0.45), lineWidth: 1))
+                    .shadow(color: (lamp.power ? glowColor : .clear).opacity(0.85), radius: 14)
+                    .razerPulse(lamp.power && (lamp.screenSyncOn || lamp.musicSyncOn), color: glowColor)
+                    .opacity(lamp.power ? 1 : 0.35)
                 Spacer()
             }
             .padding(.vertical, 18)
@@ -94,8 +95,8 @@ struct MenuPanelView: View {
                         Image(systemName: "chevron.down").font(.system(size: 9)).foregroundStyle(Color.razerSecondary)
                     }
                     HStack(spacing: 5) {
-                        Circle().fill(Color.green).frame(width: 6, height: 6)
-                        Text("online · \(lamp.selected?.ip ?? "")").font(.system(size: 11)).foregroundStyle(Color.razerSecondary)
+                        Circle().fill(Color.razerGreen).frame(width: 6, height: 6).razerPulse(true)
+                        Text("ONLINE · \(lamp.selected?.ip ?? "")").font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(Color.razerSecondary)
                     }
                 }
             }
@@ -116,8 +117,7 @@ struct MenuPanelView: View {
             HStack(spacing: 10) {
                 Image(systemName: "sun.max").font(.system(size: 13)).foregroundStyle(Color.razerSecondary).frame(width: 18)
                 Slider(value: $lamp.brightness, in: 1...100) { e in if !e { lamp.pushBrightness() } }
-                Text("\(Int(lamp.brightness))%").font(.caption).monospacedDigit()
-                    .frame(width: 40, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+                Text("\(Int(lamp.brightness))%").razerHUD()
             }
             HStack(spacing: 10) {
                 Image(systemName: "thermometer.medium").font(.system(size: 13)).foregroundStyle(Color.razerSecondary).frame(width: 18)
@@ -129,8 +129,7 @@ struct MenuPanelView: View {
                             .onEnded { _ in lamp.pushColorTemp() })
                 }
                 .frame(height: 16).clipShape(RoundedRectangle(cornerRadius: 8))
-                Text("\(Int(lamp.colorTempK))K").font(.caption2).monospacedDigit()
-                    .frame(width: 46, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+                Text("\(Int(lamp.colorTempK))K").razerHUD()
             }
         }
     }

@@ -66,7 +66,7 @@ struct FullView: View {
         HStack(spacing: 10) {
             Image(systemName: "bolt.fill").font(.title3)
                 .foregroundStyle(Color.razerGreen)
-                .shadow(color: .razerGreen.opacity(0.7), radius: 5)
+                .razerPulse(lamp.connected)
             VStack(alignment: .leading, spacing: 2) {
                 Text(lamp.connected ? name(lamp.selected) : "YEELIGHTBAR")
                     .razerHeading(13).lineLimit(1)
@@ -465,7 +465,7 @@ struct FullView: View {
             HStack {
                 Text(label).font(.callout)
                 Spacer()
-                Text(display(value.wrappedValue)).font(.callout).monospacedDigit().foregroundStyle(Color.razerSecondary)
+                Text(display(value.wrappedValue)).razerHUD()
             }
             Slider(value: value, in: range) { editing in if !editing { commit() } }
         }
