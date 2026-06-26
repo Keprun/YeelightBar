@@ -322,9 +322,11 @@ struct FullView: View {
             Text("Мониторы не найдены").font(.caption).foregroundStyle(.secondary)
         } else {
             let union = infos.dropFirst().reduce(infos[0].bounds) { $0.union($1.bounds) }
-            let scale = max(0.0001, min(540 / max(1, union.width), 230 / max(1, union.height)))
+            let scale = max(0.0001, min(540 / max(1, union.width), 240 / max(1, union.height)))
             ZStack(alignment: .topLeading) {
                 ForEach(infos) { info in
+                    let w = max(64, info.bounds.width * scale - 8)
+                    let h = max(44, info.bounds.height * scale - 8)
                     Menu {
                         if groupLamps.isEmpty {
                             Text("Сначала добавь лампы в группу (вкладка «Устройства»)")
@@ -336,46 +338,44 @@ struct FullView: View {
                             }
                         }
                     } label: {
-                        monitorBox(info)
+                        monitorBox(info, w: w, h: h)
                     }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).buttonStyle(.plain)
-                    .frame(width: max(46, info.bounds.width * scale - 4), height: max(30, info.bounds.height * scale - 4))
+                    .buttonStyle(.plain).menuStyle(.borderlessButton).menuIndicator(.hidden)
                     .position(x: (info.bounds.minX - union.minX) * scale + info.bounds.width * scale / 2,
                               y: (info.bounds.minY - union.minY) * scale + info.bounds.height * scale / 2)
                 }
             }
-            .frame(width: union.width * scale, height: union.height * scale, alignment: .topLeading)
-            .padding(.vertical, 4)
+            .frame(width: max(64, union.width * scale), height: max(44, union.height * scale), alignment: .topLeading)
+            .padding(.vertical, 6)
         }
     }
 
-    private func monitorBox(_ info: DisplayInfo) -> some View {
+    private func monitorBox(_ info: DisplayInfo, w: CGFloat, h: CGFloat) -> some View {
         let zones = zonesOn(info.id)
         let colors = lamp.regionColors[info.id] ?? [:]
-        return GeometryReader { geo in
-            let W = geo.size.width, H = geo.size.height
-            ZStack {
-                RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.88))
-                ForEach(zones, id: \.region) { z in
-                    let f = zoneFrac(z.region)
-                    Rectangle().fill(colors[z.region] ?? Color.gray.opacity(0.35))
-                        .frame(width: W * f.w, height: H * f.h)
-                        .position(x: W * (f.x + f.w / 2), y: H * (f.y + f.h / 2))
-                }
-                VStack(spacing: 1) {
-                    Text("\(info.index)").font(.headline).bold().foregroundStyle(.white)
-                    Text("\(info.width)×\(info.height)").font(.system(size: 8)).monospacedDigit().foregroundStyle(.white.opacity(0.85))
-                    if zones.isEmpty {
-                        Text(info.isMain ? "основной · нет ламп" : "нет ламп").font(.system(size: 8)).foregroundStyle(.white.opacity(0.5))
-                    } else {
-                        Text(zones.map(\.label).joined(separator: " · ")).font(.system(size: 8)).foregroundStyle(.white).lineLimit(1)
-                    }
-                }.padding(2)
+        return ZStack {
+            RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82))   // the "screen"
+            ForEach(zones, id: \.region) { z in
+                let f = zoneFrac(z.region)
+                Rectangle().fill(colors[z.region] ?? Color.white.opacity(0.12))
+                    .frame(width: w * f.w, height: h * f.h)
+                    .position(x: w * (f.x + f.w / 2), y: h * (f.y + f.h / 2))
             }
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6)
-                .stroke(info.isMain ? Color.blue.opacity(0.8) : Color.secondary.opacity(0.45), lineWidth: info.isMain ? 2 : 1))
+            VStack(spacing: 1) {
+                Text("\(info.index)").font(.title3).bold().foregroundStyle(.white)
+                Text("\(info.width)×\(info.height)").font(.system(size: 9)).monospacedDigit().foregroundStyle(.white.opacity(0.85))
+                if zones.isEmpty {
+                    Text(info.isMain ? "осн. · нет ламп" : "нет ламп").font(.system(size: 9)).foregroundStyle(.white.opacity(0.55))
+                } else {
+                    Text(zones.map(\.label).joined(separator: " · ")).font(.system(size: 9)).foregroundStyle(.white).lineLimit(1).padding(.horizontal, 3)
+                }
+            }
         }
+        .frame(width: w, height: h)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(info.isMain ? Color.blue : Color.secondary.opacity(0.55), lineWidth: info.isMain ? 2.5 : 1.5))
+        .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+        .contentShape(RoundedRectangle(cornerRadius: 6))
     }
 
     /// Zones assigned on a given display, with the short names of the lamp(s) on each.
