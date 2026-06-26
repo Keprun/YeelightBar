@@ -1,5 +1,7 @@
 # YeelightBar
 
+**English** · [Русский](README.ru.md) · [中文](README.zh-CN.md) · [فارسی](README.fa.md) · [Español](README.es.md) · [العربية](README.ar.md)
+
 A native macOS app for controlling **Yeelight** LAN devices — built for the **Yeelight Screen Light Bar Pro**
 (`YLTD003`), but it drives plain RGB strips and bulbs too. The official software is Windows-only; this is a clean,
 fast SwiftUI replacement with screen-sync ambilight, music reactivity, and multi-lamp group control.
