@@ -16,6 +16,8 @@ struct MenuPanelView: View {
             if lamp.connected { controlPanel } else { finder }
         }
         .frame(width: 340)
+        .background(Color.razerBG)
+        .razerChrome()
     }
 
     // MARK: - Connected: control panel

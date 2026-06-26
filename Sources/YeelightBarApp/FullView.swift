@@ -33,33 +33,46 @@ struct FullView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 sidebarHeader.padding(14)
-                Divider()
+                Rectangle().fill(Color.razerHairline).frame(height: 1)
                 List(AppSection.allCases, selection: $section) { s in
-                    Label(s.title, systemImage: s.icon).tag(s)
+                    Label(s.title, systemImage: s.icon)
+                        .font(.system(size: 12, weight: .bold)).textCase(.uppercase).tracking(0.8)
+                        .tag(s)
                 }
                 .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
             }
+            .background(Color.razerBG)
             .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 250)
         } detail: {
-            ScrollView {
-                detail
-                    .padding(28)
-                    .frame(maxWidth: 640, alignment: .leading)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            ZStack {
+                RazerBackground()
+                ScrollView {
+                    detail
+                        .padding(28)
+                        .frame(maxWidth: 660, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle(section.title)
         }
         .frame(minWidth: 820, idealWidth: 880, minHeight: 580, idealHeight: 680)
+        .razerChrome()
         .onAppear { lamp.refreshScreenPermission(); lamp.refreshDisplays() }
     }
 
     private var sidebarHeader: some View {
         HStack(spacing: 10) {
-            Image(systemName: "lightbulb.fill").font(.title2).foregroundStyle(.yellow)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(lamp.connected ? name(lamp.selected) : "YeelightBar").font(.headline).lineLimit(1)
+            Image(systemName: "bolt.fill").font(.title3)
+                .foregroundStyle(Color.razerGreen)
+                .shadow(color: .razerGreen.opacity(0.7), radius: 5)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(lamp.connected ? name(lamp.selected) : "YEELIGHTBAR")
+                    .razerHeading(13).lineLimit(1)
                 Text(lamp.connected ? headerSubtitle : "не подключено")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.system(size: 10, weight: .medium)).textCase(.uppercase).tracking(0.5)
+                    .foregroundStyle(Color.razerSecondary)
             }
             Spacer()
             if lamp.connected {
