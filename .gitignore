@@ -7,3 +7,6 @@ build/
 # Xcode user-specific
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
+
+# release artifacts
+dist/
