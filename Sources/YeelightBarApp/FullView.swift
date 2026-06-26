@@ -184,24 +184,42 @@ struct FullView: View {
                                 .buttonStyle(.borderless).help("Обновить список экранов")
                         }
                         ForEach(lamp.devices.filter { lamp.groupIPs.contains($0.ip) }, id: \.ip) { d in
-                            HStack(spacing: 8) {
-                                Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb")
-                                Text(name(d)).font(.callout).lineLimit(1)
-                                Spacer()
-                                if lamp.displays.count > 1 {
-                                    Menu(displayShort(lamp.displayID(forLamp: d.ip))) {
-                                        ForEach(lamp.displays) { disp in
-                                            Button(disp.label) { lamp.setSyncDisplay(d.ip, disp.id) }
-                                        }
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb")
+                                    Text(name(d)).font(.callout).lineLimit(1)
+                                    Spacer()
+                                    if lamp.displays.count > 1 {
+                                        Menu(displayShort(lamp.displayID(forLamp: d.ip))) {
+                                            ForEach(lamp.displays) { disp in
+                                                Button(disp.label) { lamp.setSyncDisplay(d.ip, disp.id) }
+                                            }
+                                        }.fixedSize()
+                                    }
+                                    Menu(zoneLabel(lamp.displayRegion(d.ip))) {
+                                        Button("Верх") { lamp.setRegion(d.ip, .top) }
+                                        Button("Низ") { lamp.setRegion(d.ip, .bottom) }
+                                        Button("Лево") { lamp.setRegion(d.ip, .left) }
+                                        Button("Право") { lamp.setRegion(d.ip, .right) }
+                                        Button("Весь экран") { lamp.setRegion(d.ip, .full) }
                                     }.fixedSize()
                                 }
-                                Menu(zoneLabel(lamp.displayRegion(d.ip))) {
-                                    Button("Верх") { lamp.setRegion(d.ip, .top) }
-                                    Button("Низ") { lamp.setRegion(d.ip, .bottom) }
-                                    Button("Лево") { lamp.setRegion(d.ip, .left) }
-                                    Button("Право") { lamp.setRegion(d.ip, .right) }
-                                    Button("Весь экран") { lamp.setRegion(d.ip, .full) }
-                                }.fixedSize()
+                                if lamp.isAddressable(d) {
+                                    let n = lamp.segments(forLamp: d.ip)
+                                    HStack(spacing: 10) {
+                                        Toggle("По сегментам", isOn: Binding(get: { n > 0 }, set: { lamp.setSegments(d.ip, $0 ? 12 : 0) }))
+                                            .toggleStyle(.checkbox).font(.caption)
+                                        if n > 0 {
+                                            Stepper("\(n) сегм.", value: Binding(get: { lamp.segments(forLamp: d.ip) }, set: { lamp.setSegments(d.ip, $0) }), in: 2...30)
+                                                .font(.caption).fixedSize()
+                                            Button { lamp.toggleSegmentReversed(d.ip) } label: {
+                                                Image(systemName: "arrow.left.arrow.right")
+                                                    .foregroundStyle(lamp.segmentReversed[d.ip] == true ? Color.accentColor : .secondary)
+                                            }.buttonStyle(.borderless).help("Развернуть направление сегментов")
+                                        }
+                                        Spacer()
+                                    }.padding(.leading, 22)
+                                }
                             }
                         }
                     }.padding(10)

@@ -42,6 +42,13 @@ final class LampController: ObservableObject {
     @Published var syncDisplays: [String: CGDirectDisplayID] = [:] {
         didSet { if !suppressRegionRestart, screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) } }
     }
+    /// Addressable strips: per-lamp segment count (0/absent = whole-strip; >0 = per-segment ambilight via music mode).
+    @Published var segmentCount: [String: Int] = [:] {
+        didSet { if !suppressRegionRestart, screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) } }
+    }
+    @Published var segmentReversed: [String: Bool] = [:] {
+        didSet { if !suppressRegionRestart, screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) } }
+    }
     @Published var bandFraction: Double = 0.25 { didSet { sync.bandFraction = bandFraction } }
     @Published var brightnessFollow = false
     @Published var syncSmoothing: Double = 0.35 { didSet { sync.smoothing = syncSmoothing } }
@@ -208,6 +215,8 @@ final class LampController: ObservableObject {
             suppressRegionRestart = true        // the single restart below covers this removal
             syncRegions.removeValue(forKey: d.ip)
             syncDisplays.removeValue(forKey: d.ip)
+            segmentCount.removeValue(forKey: d.ip)
+            segmentReversed.removeValue(forKey: d.ip)
             suppressRegionRestart = false
         } else {
             groupIPs.insert(d.ip)
@@ -232,6 +241,8 @@ final class LampController: ObservableObject {
         suppressRegionRestart = true
         syncRegions = syncRegions.filter { live.contains($0.key) }
         syncDisplays = syncDisplays.filter { live.contains($0.key) }
+        segmentCount = segmentCount.filter { live.contains($0.key) }
+        segmentReversed = segmentReversed.filter { live.contains($0.key) }
         suppressRegionRestart = false
         if let sel = selected, !live.contains(sel.ip) {       // primary itself vanished
             if let nip = groupIPs.first, let next = found.first(where: { $0.ip == nip }) {
@@ -528,7 +539,9 @@ final class LampController: ObservableObject {
     private func syncTargets() -> [SyncTarget] {
         devices.filter { groupIPs.contains($0.ip) }.map { d in
             SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d),
-                       region: syncRegions[d.ip] ?? .top, displayID: displayID(forLamp: d.ip))
+                       region: syncRegions[d.ip] ?? .top, displayID: displayID(forLamp: d.ip),
+                       segments: isAddressable(d) ? (segmentCount[d.ip] ?? 0) : 0,
+                       reversed: segmentReversed[d.ip] ?? false)
         }
     }
 
@@ -622,6 +635,12 @@ final class LampController: ObservableObject {
     /// Which display a lamp samples for screen-sync (defaults to the system main display).
     func displayID(forLamp ip: String) -> CGDirectDisplayID { syncDisplays[ip] ?? CGMainDisplayID() }
     func setSyncDisplay(_ ip: String, _ displayID: CGDirectDisplayID) { syncDisplays[ip] = displayID }
+
+    /// Addressable strip = advertises set_segment_rgb (per-segment colour, via music mode).
+    func isAddressable(_ d: DiscoveredDevice) -> Bool { d.support.contains("set_segment_rgb") }
+    func segments(forLamp ip: String) -> Int { segmentCount[ip] ?? 0 }
+    func setSegments(_ ip: String, _ n: Int) { if n <= 0 { segmentCount.removeValue(forKey: ip) } else { segmentCount[ip] = max(2, n) } }
+    func toggleSegmentReversed(_ ip: String) { segmentReversed[ip] = !(segmentReversed[ip] ?? false) }
 
     func openScreenSettings() {
         CGRequestScreenCaptureAccess() // surfaces the system prompt the first time
