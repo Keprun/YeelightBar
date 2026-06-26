@@ -180,15 +180,15 @@ struct MenuPanelView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            if !lamp.devices.isEmpty {
-                Text("Устройства · зона экрана").font(.caption2).foregroundStyle(.secondary)
-                ForEach(lamp.devices, id: \.ip) { d in
+            let groupDevices = lamp.devices.filter { lamp.groupIPs.contains($0.ip) }
+            if !groupDevices.isEmpty {
+                Text("Зона экрана (группа · \(groupDevices.count))").font(.caption2).foregroundStyle(.secondary)
+                ForEach(groupDevices, id: \.ip) { d in
                     HStack(spacing: 6) {
                         Text(friendlyName(d)).font(.caption).lineLimit(1)
                         Text(d.ip).font(.caption2).foregroundStyle(.secondary)
                         Spacer()
                         Menu(regionLabel(lamp.displayRegion(d.ip))) {
-                            Button("Выкл") { lamp.setRegion(d.ip, nil) }
                             Button("Верх") { lamp.setRegion(d.ip, .top) }
                             Button("Низ") { lamp.setRegion(d.ip, .bottom) }
                             Button("Лево") { lamp.setRegion(d.ip, .left) }

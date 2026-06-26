@@ -10,7 +10,8 @@ enum SyncMode: Hashable { case off, screen, music }
 final class LampController: ObservableObject {
     // Device finding
     @Published var devices: [DiscoveredDevice] = []
-    @Published var selected: DiscoveredDevice?
+    @Published var selected: DiscoveredDevice?              // the "primary": drives state read-back + UI
+    @Published var groupIPs: Set<String> = []              // every device under control (multi-select)
     @Published var isSearching = false
     @Published var manualIP = ""
 
@@ -140,10 +141,17 @@ final class LampController: ObservableObject {
         }
     }
 
+    /// Explicit "connect": focus on ONE device — it becomes the primary and the only group member.
     func connect(to d: DiscoveredDevice?) {
         guard let d else { return }
         stopScreenSync()
         stopMusicSync()
+        groupIPs = [d.ip]        // a single explicit connect resets the control group
+        setPrimary(d)
+    }
+
+    /// Point the primary (state read-back source) at a device without touching group membership.
+    private func setPrimary(_ d: DiscoveredDevice) {
         pollTimer?.invalidate(); pollTimer = nil
         selected = d
         device = YeelightDevice(ip: d.ip, tcpPort: d.port)
@@ -153,6 +161,34 @@ final class LampController: ObservableObject {
         connected = false        // drop stale state until the new lamp's props arrive
         connectError = nil
         refresh()
+    }
+
+    /// Add/remove a device from the control group (multi-select "mix"). The first member becomes
+    /// the primary; removing the primary re-points it to another member (or disconnects if empty).
+    func toggleGroup(_ d: DiscoveredDevice) {
+        if groupIPs.contains(d.ip) {
+            groupIPs.remove(d.ip)
+            if selected?.ip == d.ip {
+                if let nip = groupIPs.first, let next = devices.first(where: { $0.ip == nip }) {
+                    setPrimary(next)
+                } else {                       // group is now empty
+                    pollTimer?.invalidate(); pollTimer = nil
+                    stopScreenSync(); stopMusicSync()
+                    selected = nil; device = nil; connected = false
+                }
+            }
+            syncRegions.removeValue(forKey: d.ip)
+        } else {
+            groupIPs.insert(d.ip)
+            if selected == nil { setPrimary(d) }
+        }
+        if screenSyncOn || musicSyncOn { restartSync() }   // keep a running effect in sync with the group
+    }
+
+    /// Make an already-grouped device the primary (whose state the sliders/toggles reflect).
+    func makePrimary(_ d: DiscoveredDevice) {
+        guard groupIPs.contains(d.ip), selected?.ip != d.ip else { return }
+        setPrimary(d)
     }
 
     func backToDevices() { pollTimer?.invalidate(); pollTimer = nil; connected = false }
@@ -265,81 +301,95 @@ final class LampController: ObservableObject {
         }
     }
 
-    // MARK: - Control (push current published value to the lamp)
+    // MARK: - Control (fans out to every device in the control group)
 
-    /// True for the Screen Light Bar Pro (lamp15) — it ignores `set_power off` and only
-    /// responds to `dev_toggle`. Plain strips/bulbs reject `dev_toggle` ("method not
-    /// supported") and need ordinary `set_power`.
-    private var selectedIsBar: Bool {
-        guard let d = selected else { return false }
+    /// True when a device has a separate bg/ambient channel (the Screen Light Bar Pro, lamp15).
+    private func isBar(_ d: DiscoveredDevice?) -> Bool {
+        guard let d else { return false }
         return d.support.contains("bg_set_rgb") || d.model == "lamp15"
     }
+    private var selectedIsBar: Bool { isBar(selected) }
 
-    /// Whole-device on indicator: true if either channel is lit.
+    /// Whole-device on indicator (reflects the primary): true if either channel is lit.
     var masterOn: Bool { power || ambientOn }
 
-    /// Master power: turn the WHOLE device on/off (front white + ambient together). Uses explicit
-    /// per-channel set_power/bg_set_power — deterministic, so the UI and device never disagree.
+    /// The colour channel's power method for the primary device.
+    private var colorPowerMethod: String { selectedIsBar ? "bg_set_power" : "set_power" }
+
+    /// Every device currently in the control group, tagged bar vs plain strip/bulb.
+    private func controlTargets() -> [(dev: YeelightDevice, isBar: Bool)] {
+        devices.filter { groupIPs.contains($0.ip) }
+               .map { (YeelightDevice(ip: $0.ip, tcpPort: $0.port), isBar($0)) }
+    }
+
+    /// Run a control op on every group member, serialized on `io` so no two TCP connections race.
+    private func fanOut(_ op: @escaping (YeelightDevice, Bool) -> Void) {
+        let targets = controlTargets()
+        guard !targets.isEmpty else { return }
+        io.async { for t in targets { op(t.dev, t.isBar) } }
+    }
+    /// Fire-and-forget control with a short reply wait — the lamp acts whether or not we read it.
+    nonisolated private func send(_ dev: YeelightDevice, _ method: String, _ params: [Any]) {
+        _ = try? dev.control(method, params, readTimeout: 0.25)
+    }
+
+    /// Master power for every group member: front white + ambient together.
     func togglePower() {
         let target = !masterOn
         if !target { stopScreenSync(); stopMusicSync() }
-        power = target
-        push { try $0.power(target) }                     // front / main channel
-        if selectedIsBar {
-            ambientOn = target
-            let v = target ? "on" : "off"
-            push { try $0.control("bg_set_power", [v, "smooth", 300]) }   // ambient channel
-        } else {
-            ambientOn = target                            // single-channel device
+        power = target; ambientOn = target
+        let v = target ? "on" : "off"
+        fanOut { dev, isBar in
+            self.send(dev, "set_power", [v, "smooth", 300])
+            if isBar { self.send(dev, "bg_set_power", [v, "smooth", 300]) }
         }
         scheduleResync()
     }
 
-    /// Front white channel ONLY (the bar's main light). Leaves the ambient channel untouched —
-    /// switch this off to run "только подсветка". On a single-channel strip this is the whole light.
+    /// Front white channel only (the bar's main light); on a strip this is the whole light.
     func setFrontPower(_ on: Bool) {
         power = on
-        if !selectedIsBar { ambientOn = on }              // single channel: front == the only light
-        push { try $0.power(on) }
+        if !selectedIsBar { ambientOn = on }
+        let v = on ? "on" : "off"
+        fanOut { dev, _ in self.send(dev, "set_power", [v, "smooth", 300]) }
         scheduleResync()
     }
 
-    /// Debounced ambient-colour push — coalesces ColorPicker drags so we never
-    /// exceed the lamp's ~60 cmd/min TCP quota.
+    /// Debounced colour push — coalesces drags so we stay under the lamp's ~60 cmd/min TCP quota.
     func setAmbient(_ c: Color) {
         if screenSyncOn { stopScreenSync() }   // a static colour replaces live screen-sync
         ambientColor = c
         ambientOn = true
         ambientWork?.cancel()
-        let powerMethod = colorPowerMethod
+        let rgb = c.rgbInt
         let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.push { try $0.control(powerMethod, ["on", "smooth", 0]) } // ensure the colour channel is on
-            self.pushAmbient()
+            self?.fanOut { dev, isBar in
+                if isBar {
+                    self?.send(dev, "bg_set_power", ["on", "smooth", 0])
+                    self?.send(dev, "bg_set_rgb", [rgb & 0xFFFFFF, "smooth", 300])
+                } else {
+                    self?.send(dev, "set_power", ["on", "smooth", 0])
+                    self?.send(dev, "set_rgb", [rgb & 0xFFFFFF, "smooth", 300])
+                }
+            }
         }
         ambientWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
     }
-    func pushBrightness() { let v = Int(brightness); push { try $0.setBrightness(v) } }
-    func pushColorTemp() { let k = Int(colorTempK); push { try $0.setColorTemp(k) } }
+    func pushBrightness() { let v = max(1, min(100, Int(brightness))); fanOut { dev, _ in self.send(dev, "set_bright", [v, "smooth", 300]) } }
+    func pushColorTemp() { let k = max(1700, min(6500, Int(colorTempK))); fanOut { dev, _ in self.send(dev, "set_ct_abx", [k, "smooth", 300]) } }
     func pushAmbient() {
         let rgb = ambientColor.rgbInt
-        if selectedIsBar { push { try $0.setAmbientRGB(rgb) } }       // bar: separate bg channel
-        else { push { try $0.control("set_rgb", [rgb & 0xFFFFFF, "smooth", 300]) } } // strip/bulb: main channel
+        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_rgb" : "set_rgb", [rgb & 0xFFFFFF, "smooth", 300]) }
     }
 
-    /// The colourful channel's power method: the bar has a separate "bg" channel; a plain
-    /// strip/bulb has only its main channel.
-    private var colorPowerMethod: String { selectedIsBar ? "bg_set_power" : "set_power" }
-
-    /// Independent on/off for the colour channel.
+    /// Independent on/off for the colour channel (bar = bg channel, strip = its only channel).
     func setAmbientPower(_ on: Bool) {
         if !on { stopScreenSync(); stopMusicSync() }   // colour off → stop any running sync
         ambientOn = on
         if !selectedIsBar { power = on }               // single-channel device: colour power == device power
-        let m = colorPowerMethod
         let v = on ? "on" : "off"
-        push { try $0.control(m, [v, "smooth", 300]) }
+        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", [v, "smooth", 300]) }
     }
 
     func applyScene(ct: Int, bright: Int) {
@@ -347,13 +397,8 @@ final class LampController: ObservableObject {
         colorTempK = Double(ct)
         brightness = Double(bright)
         // one atomic command sets CT + brightness together → identical every press
-        push { try $0.control("set_scene", ["ct", ct, bright]) }
+        fanOut { dev, _ in self.send(dev, "set_scene", ["ct", ct, bright]) }
         scheduleResync()
-    }
-
-    private func push(_ op: @escaping (YeelightDevice) throws -> String) {
-        guard let device else { return }
-        io.async { _ = try? op(device) }
     }
 
     // MARK: - Screen sync (ambilight)
@@ -373,8 +418,7 @@ final class LampController: ObservableObject {
         ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         screenSyncOn = true            // optimistic; reverted by onState on failure
         screenSyncStatus = "Запуск…"
-        let m = colorPowerMethod
-        push { try $0.control(m, ["on", "smooth", 200]) }   // ensure the colour channel is on
+        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", ["on", "smooth", 200]) } // colour channel on
         sync.start(targets: targets)
     }
 
@@ -398,9 +442,8 @@ final class LampController: ObservableObject {
         ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         musicSyncOn = true
         musicSyncStatus = "Запуск…"
-        let m = colorPowerMethod
-        push { try $0.control(m, ["on", "smooth", 200]) }   // ensure the colour channel is on
-        music.start(targets: syncTargets())   // same opt-in set as screen sync (region ignored for music)
+        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", ["on", "smooth", 200]) } // colour channel on
+        music.start(targets: syncTargets())   // drives the whole control group (region ignored for music)
     }
 
     func stopMusicSync() {
@@ -413,31 +456,23 @@ final class LampController: ObservableObject {
 
     // MARK: - Multi-device sync targets (each lamp samples its own screen region)
 
-    /// Devices that participate in sync (screen AND music): the connected primary always does
-    /// (using its chosen zone, default top), plus any OTHER device the user has EXPLICITLY assigned
-    /// a zone to. Devices the user never opted in (no zone) are left untouched — so selecting music
-    /// while on the strip won't silently grab every other lamp in the home.
+    /// Devices that participate in sync (screen AND music): exactly the control group. Each samples
+    /// its chosen screen zone (default top); music ignores the zone. Nothing outside the group is
+    /// ever touched — so an effect only drives the lamps you explicitly added.
     private func syncTargets() -> [SyncTarget] {
-        var out: [SyncTarget] = []
-        if let d = selected {
-            out.append(SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: syncRegions[d.ip] ?? .top))
+        devices.filter { groupIPs.contains($0.ip) }.map { d in
+            SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: syncRegions[d.ip] ?? .top)
         }
-        for d in devices where d.ip != selected?.ip {
-            guard let region = syncRegions[d.ip] else { continue }
-            out.append(SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d), region: region))
-        }
-        return out
     }
 
     func setRegion(_ ip: String, _ region: SyncRegion?) {
         if let region { syncRegions[ip] = region } else { syncRegions.removeValue(forKey: ip) }
     }
 
-    /// What the zone menu should display: the connected primary always participates (default top),
-    /// so it never shows «Выкл»; other devices show their explicit zone or nil («Выкл»).
+    /// Zone shown in the menu: a group member defaults to top (never «Выкл»); others show nil.
     func displayRegion(_ ip: String) -> SyncRegion? {
-        if ip == selected?.ip { return syncRegions[ip] ?? .top }
-        return syncRegions[ip]
+        guard groupIPs.contains(ip) else { return nil }
+        return syncRegions[ip] ?? .top
     }
 
     /// bg-capable lamps stream the ambient channel; plain RGB strips stream the main channel.
@@ -497,7 +532,7 @@ final class LampController: ObservableObject {
               abs(Double(target) - brightness) > 4 else { return }
         lastBrightSend = now
         brightness = Double(target)
-        push { try $0.setBrightness(target) }
+        fanOut { dev, _ in self.send(dev, "set_bright", [target, "smooth", 300]) }
     }
 
     /// Re-read lamp state shortly after a discrete action (e.g. power) so the UI

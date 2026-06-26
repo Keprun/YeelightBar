@@ -57,14 +57,14 @@ struct FullView: View {
             Image(systemName: "lightbulb.fill").font(.title2).foregroundStyle(.yellow)
             VStack(alignment: .leading, spacing: 1) {
                 Text(lamp.connected ? name(lamp.selected) : "YeelightBar").font(.headline).lineLimit(1)
-                Text(lamp.connected ? (lamp.selected?.ip ?? "") : "не подключено")
+                Text(lamp.connected ? headerSubtitle : "не подключено")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if lamp.connected {
                 Toggle("", isOn: Binding(get: { lamp.masterOn }, set: { _ in lamp.togglePower() }))
                     .toggleStyle(.switch).labelsHidden()
-                    .help("Вся лампа: передний свет + подсветка")
+                    .help(lamp.groupIPs.count > 1 ? "Вся группа (\(lamp.groupIPs.count))" : "Вся лампа: передний свет + подсветка")
             }
         }
     }
@@ -173,16 +173,17 @@ struct FullView: View {
 
             if lamp.syncMode == .screen {
                 screenPreview
-                GroupBox("Зона экрана для каждой лампы") {
+                GroupBox("Зона экрана для каждой лампы группы") {
                     VStack(alignment: .leading, spacing: 10) {
-                        ForEach(lamp.devices, id: \.ip) { d in
+                        Text("В группе сейчас \(lamp.groupIPs.count). Добавляй/убирай лампы во вкладке «Устройства».")
+                            .font(.caption2).foregroundStyle(.secondary)
+                        ForEach(lamp.devices.filter { lamp.groupIPs.contains($0.ip) }, id: \.ip) { d in
                             HStack {
                                 Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb")
                                 Text(name(d)).font(.callout)
                                 Text(d.ip).font(.caption).foregroundStyle(.secondary)
                                 Spacer()
                                 Menu(zoneLabel(lamp.displayRegion(d.ip))) {
-                                    Button("Выкл") { lamp.setRegion(d.ip, nil) }
                                     Button("Верх") { lamp.setRegion(d.ip, .top) }
                                     Button("Низ") { lamp.setRegion(d.ip, .bottom) }
                                     Button("Лево") { lamp.setRegion(d.ip, .left) }
@@ -242,19 +243,34 @@ struct FullView: View {
             if let err = lamp.connectError { Text(err).font(.callout).foregroundStyle(.red) }
 
             GroupBox("Найденные лампы") {
-                VStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Отметь несколько ламп — они управляются вместе (питание, цвет, сцены, эффекты).")
+                        .font(.caption).foregroundStyle(.secondary)
                     if lamp.devices.isEmpty {
                         Text("Пока ничего — нажми «Автопоиск».").foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                     }
                     ForEach(lamp.devices, id: \.ip) { d in
-                        HStack {
-                            Image(systemName: d.ip == lamp.selected?.ip ? "checkmark.circle.fill" : "lightbulb")
-                                .foregroundStyle(d.ip == lamp.selected?.ip ? Color.green : .secondary)
-                            VStack(alignment: .leading) { Text(name(d)); Text(d.ip).font(.caption).foregroundStyle(.secondary) }
+                        let inGroup = lamp.groupIPs.contains(d.ip)
+                        HStack(spacing: 10) {
+                            Toggle(isOn: Binding(get: { inGroup }, set: { _ in lamp.toggleGroup(d) })) { EmptyView() }
+                                .toggleStyle(.checkbox).labelsHidden()
+                            Image(systemName: d.model == "strip8" ? "alternatingcurrent" : "lightbulb.fill")
+                                .foregroundStyle(inGroup ? Color.green : .secondary)
+                            Button {
+                                if inGroup { lamp.makePrimary(d) } else { lamp.toggleGroup(d) }
+                            } label: {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(name(d)).foregroundStyle(.primary)
+                                    Text(d.ip).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }.buttonStyle(.plain)
+                            if d.ip == lamp.selected?.ip {
+                                Text("основная").font(.caption2).foregroundStyle(.blue)
+                                    .padding(.horizontal, 6).padding(.vertical, 1)
+                                    .background(Color.blue.opacity(0.15), in: Capsule())
+                            }
                             Spacer()
                             Button("Мигнуть") { lamp.identify(d) }.controlSize(.small)
-                            Button(d.ip == lamp.selected?.ip ? "Активна" : "Подключить") { lamp.connect(to: d) }
-                                .controlSize(.small).disabled(d.ip == lamp.selected?.ip && lamp.connected)
                         }.padding(.vertical, 2)
                     }
                 }.padding(10)
@@ -361,6 +377,11 @@ struct FullView: View {
         Button { lamp.applyScene(ct: ct, bright: b) } label: {
             HStack { Image(systemName: icon); Text(title); Spacer() }.padding(.vertical, 6)
         }.buttonStyle(.bordered).controlSize(.large)
+    }
+
+    private var headerSubtitle: String {
+        let ip = lamp.selected?.ip ?? ""
+        return lamp.groupIPs.count > 1 ? "\(ip) · группа \(lamp.groupIPs.count)" : ip
     }
 
     private func name(_ d: DiscoveredDevice?) -> String {
