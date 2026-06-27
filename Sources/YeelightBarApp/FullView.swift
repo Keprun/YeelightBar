@@ -7,10 +7,10 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .control: return "Свет"
-        case .effects: return "Эффекты"
-        case .scenes: return "Сцены"
-        case .devices: return "Устройства"
+        case .control: return NSLocalizedString("Свет", comment: "")
+        case .effects: return NSLocalizedString("Эффекты", comment: "")
+        case .scenes: return NSLocalizedString("Сцены", comment: "")
+        case .devices: return NSLocalizedString("Устройства", comment: "")
         }
     }
     var icon: String {
@@ -101,7 +101,7 @@ struct FullView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(lamp.connected ? name(lamp.selected) : "YEELIGHTBAR")
                     .razerHeading(13).lineLimit(1)
-                Text(lamp.connected ? headerSubtitle : "не подключено")
+                Text(lamp.connected ? headerSubtitle : NSLocalizedString("не подключено", comment: ""))
                     .font(.system(size: 10, weight: .medium)).textCase(.uppercase).tracking(0.5)
                     .foregroundStyle(Color.razerSecondary)
             }
@@ -213,7 +213,7 @@ struct FullView: View {
                 }
             }
             if let s = lamp.screenSyncStatus ?? lamp.musicSyncStatus {
-                Text(s).font(.callout).foregroundStyle(s.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                Text(LocalizedStringKey(s)).font(.callout).foregroundStyle(s.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
             }
 
             if lamp.syncMode == .screen {
@@ -322,7 +322,7 @@ struct FullView: View {
                 }.frame(maxWidth: .infinity)
             }.buttonStyle(.borderedProminent).controlSize(.large).disabled(lamp.isSearching)
 
-            if let err = lamp.connectError { Text(err).font(.callout).foregroundStyle(.red) }
+            if let err = lamp.connectError { Text(LocalizedStringKey(err)).font(.callout).foregroundStyle(.red) }
 
             GroupBox("Найденные лампы") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -481,7 +481,7 @@ struct FullView: View {
     }
 
     private func displayShort(_ did: CGDirectDisplayID) -> String {
-        lamp.displays.first(where: { $0.id == did })?.short ?? "экран"
+        lamp.displays.first(where: { $0.id == did })?.short ?? NSLocalizedString("экран", comment: "")
     }
 
     private func zoneFrac(_ r: SyncRegion, _ b: CGFloat, _ len: CGFloat, _ c: CGFloat) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
@@ -536,7 +536,9 @@ struct FullView: View {
 
     private var headerSubtitle: String {
         let ip = lamp.selected?.ip ?? ""
-        return lamp.groupIPs.count > 1 ? "\(ip) · группа \(lamp.groupIPs.count)" : ip
+        return lamp.groupIPs.count > 1
+            ? String(format: NSLocalizedString("%@ · группа %lld", comment: ""), ip, lamp.groupIPs.count)
+            : ip
     }
 
     private func name(_ d: DiscoveredDevice?) -> String {
@@ -544,10 +546,12 @@ struct FullView: View {
         return d.model == "lamp15" ? "Screen Light Bar Pro" : (d.model.isEmpty ? "Yeelight" : d.model)
     }
     private func zoneLabel(_ r: SyncRegion?) -> String {
+        let k: String
         switch r {
-        case .top: return "Верх"; case .bottom: return "Низ"; case .left: return "Лево"
-        case .right: return "Право"; case .full: return "Весь"; case nil: return "Выкл"
+        case .top: k = "Верх"; case .bottom: k = "Низ"; case .left: k = "Лево"
+        case .right: k = "Право"; case .full: k = "Весь"; case nil: k = "Выкл"
         }
+        return NSLocalizedString(k, comment: "")
     }
     private let presets: [Color] = [
         Color(rgb: 0xFF5A3C), Color(rgb: 0xFFB23E), Color(rgb: 0xF5E6C8),

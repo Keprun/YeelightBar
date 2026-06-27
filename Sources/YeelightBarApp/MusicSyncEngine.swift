@@ -84,7 +84,7 @@ final class MusicSyncEngine: NSObject, SCStreamOutput {
                     self.queue.async {
                         guard gen == self.generation else { stream.stopCapture(completionHandler: { _ in }); return }
                         if let err {
-                            self.teardown(); self.report(false, "Не удалось начать: \(err.localizedDescription)")
+                            self.teardown(); self.report(false, String(format: NSLocalizedString("Не удалось начать: %@", comment: ""), err.localizedDescription))
                         } else {
                             self.stream = stream
                             self.report(true, nil)

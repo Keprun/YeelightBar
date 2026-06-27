@@ -202,7 +202,7 @@ struct MenuPanelView: View {
             }
 
             if let s = lamp.screenSyncStatus ?? lamp.musicSyncStatus {
-                Text(s).font(.caption2)
+                Text(LocalizedStringKey(s)).font(.caption2)
                     .foregroundStyle(s.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -337,14 +337,16 @@ struct MenuPanelView: View {
     private func deviceLabel(_ d: DiscoveredDevice) -> String { "\(friendlyName(d)) · \(d.ip)" }
 
     private func regionLabel(_ r: SyncRegion?) -> String {
+        let k: String
         switch r {
-        case .top: return "Верх"
-        case .bottom: return "Низ"
-        case .left: return "Лево"
-        case .right: return "Право"
-        case .full: return "Весь"
-        case nil: return "Выкл"
+        case .top: k = "Верх"
+        case .bottom: k = "Низ"
+        case .left: k = "Лево"
+        case .right: k = "Право"
+        case .full: k = "Весь"
+        case nil: k = "Выкл"
         }
+        return NSLocalizedString(k, comment: "")
     }
 
     // MARK: - Not connected: finder
@@ -367,7 +369,7 @@ struct MenuPanelView: View {
                 HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Connecting…").font(.caption).foregroundStyle(Color.razerSecondary) }
             }
             if let err = lamp.connectError {
-                Text(err).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                Text(LocalizedStringKey(err)).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
 
             if !lamp.devices.isEmpty {

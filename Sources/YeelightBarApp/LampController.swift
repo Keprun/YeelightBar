@@ -12,8 +12,11 @@ struct DisplayInfo: Identifiable, Hashable {
     let height: Int
     let bounds: CGRect        // real position in the global display arrangement
     let isMain: Bool
-    var short: String { "Монитор \(index)" }
-    var label: String { "Монитор \(index) · \(width)×\(height)" + (isMain ? " · основной" : "") }
+    var short: String { String(format: NSLocalizedString("Монитор %lld", comment: ""), index) }
+    var label: String {
+        String(format: NSLocalizedString("Монитор %lld · %lld×%lld", comment: ""), index, width, height)
+            + (isMain ? NSLocalizedString(" · основной", comment: "") : "")
+    }
 }
 
 /// Bridges SwiftUI to YeelightKit: device finding + live control.
@@ -151,7 +154,7 @@ final class LampController: ObservableObject {
             await MainActor.run {
                 self.isSearching = false
                 guard let dev else {
-                    self.connectError = "Не найдено устройство Yeelight по адресу \(ip)."
+                    self.connectError = String(format: NSLocalizedString("Не найдено устройство Yeelight по адресу %@.", comment: ""), ip)
                     return
                 }
                 if !self.devices.contains(where: { $0.ip == dev.ip }) { self.devices.append(dev) }
@@ -270,7 +273,7 @@ final class LampController: ObservableObject {
                 self.connecting = false
                 guard props.count >= 4 else {
                     self.connected = false
-                    self.connectError = "Лампа \(ip) не ответила (возможно, занята). Подожди пару секунд и нажми снова."
+                    self.connectError = String(format: NSLocalizedString("Лампа %@ не ответила (возможно, занята). Подожди пару секунд и нажми снова.", comment: ""), ip)
                     return
                 }
                 self.connected = true
