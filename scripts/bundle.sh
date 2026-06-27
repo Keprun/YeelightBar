@@ -10,6 +10,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$PKG/.build/release/YeelightBarApp" "$APP/Contents/MacOS/YeelightBarApp"
 cp "$PKG/build-support/Info.plist" "$APP/Contents/Info.plist"
+mkdir -p "$APP/Contents/Resources"
+cp "$PKG/build-support/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 security unlock-keychain -p ybsign yb-signing.keychain 2>/dev/null || true
 if codesign --force --keychain yb-signing.keychain --sign "YeelightBar Dev" --identifier com.vfi.yeelightbar "$APP" 2>/dev/null; then
   echo "signed: YeelightBar Dev (stable)"

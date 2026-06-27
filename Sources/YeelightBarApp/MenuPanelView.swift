@@ -235,17 +235,25 @@ struct MenuPanelView: View {
             }
 
             if lamp.screenSyncOn {
+                let pip = lamp.selected?.ip
+                let bf = pip.map { lamp.bandFor($0) } ?? 0.25
+                let pBand = Binding(get: { pip.map { lamp.bandFor($0) } ?? 0.25 },
+                                    set: { v in if let pip { lamp.setBand(pip, v) } })
+                let pLen = Binding(get: { pip.map { lamp.lengthFor($0) } ?? 1.0 },
+                                   set: { v in if let pip { lamp.setLength(pip, v) } })
+                let pCenter = Binding(get: { pip.map { lamp.centerFor($0) } ?? 0.5 },
+                                      set: { v in if let pip { lamp.setCenter(pip, v) } })
                 HStack(alignment: .top, spacing: 12) {
                     ZStack(alignment: .top) {
                         RoundedRectangle(cornerRadius: 4).fill(Color.secondary.opacity(0.15))
-                        RoundedRectangle(cornerRadius: 4).fill(lamp.syncColor).frame(height: 56 * lamp.bandFraction)
+                        RoundedRectangle(cornerRadius: 4).fill(lamp.syncColor).frame(height: 56 * bf)
                     }
                     .frame(width: 100, height: 56)
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.3)))
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Источник цвета").font(.caption).foregroundStyle(Color.razerSecondary)
-                        Text("верх \(Int(lamp.bandFraction * 100))% экрана").font(.caption2)
+                        Text("зона ~\(Int(bf * 100))% экрана").font(.caption2)
                         HStack(spacing: 5) {
                             RoundedRectangle(cornerRadius: 3).fill(lamp.syncColor).frame(width: 18, height: 18)
                                 .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.secondary.opacity(0.3)))
@@ -257,9 +265,21 @@ struct MenuPanelView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Text("Область").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
-                    Slider(value: $lamp.bandFraction, in: 0.1...0.6)
-                    Text("\(Int(lamp.bandFraction * 100))%").font(.caption2).monospacedDigit().frame(width: 34, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+                    Text("Ширина").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
+                    Slider(value: pBand, in: 0.05...1.0)
+                    Text("\(Int(bf * 100))%").font(.caption2).monospacedDigit().frame(width: 34, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+                }
+                HStack(spacing: 10) {
+                    Text("Длина").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
+                    Slider(value: pLen, in: 0.05...1.0)
+                    Text("\(Int(pLen.wrappedValue * 100))%").font(.caption2).monospacedDigit().frame(width: 34, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+                }
+                if pLen.wrappedValue < 0.99 {
+                    HStack(spacing: 10) {
+                        Text("Центр").font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 72, alignment: .leading)
+                        Slider(value: pCenter, in: 0.0...1.0)
+                        Text("\(Int(pCenter.wrappedValue * 100))%").font(.caption2).monospacedDigit().frame(width: 34, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+                    }
                 }
                 Toggle(isOn: $lamp.brightnessFollow) { Text("Яркость по сцене").font(.caption) }.toggleStyle(.switch).controlSize(.mini)
                 HStack(spacing: 10) {

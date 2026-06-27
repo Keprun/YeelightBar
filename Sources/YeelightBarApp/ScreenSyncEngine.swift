@@ -16,7 +16,13 @@ struct SyncTarget {
     let displayID: CGDirectDisplayID
     var segments: Int = 0       // 0 = whole-strip (one colour via UDP); >0 = addressable per-segment via music mode
     var reversed: Bool = false  // segment 0 is the far end of the strip
+    var band: Double = 0.25     // capture DEPTH: fraction of the screen sampled inward from the edge
+    var length: Double = 1.0    // capture LENGTH: fraction of the edge sampled along it (1 = the whole edge)
+    var center: Double = 0.5    // where that length is centred along the edge (0.5 = middle)
 }
+
+/// Per-(display, region) capture geometry the engine reads each frame (depth × length × position).
+struct ZoneGeom { var band = 0.25; var length = 1.0; var center = 0.5 }
 
 /// Fans colour out to one or more lamps. Each lamp is bound to a (display, region). All device
 /// socket I/O is serialized on a private queue so it never blocks capture and never races a lamp.
@@ -87,7 +93,9 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
     var onRegionColors: (([CGDirectDisplayID: [SyncRegion: Int]]) -> Void)?
     var onLuma: ((Double) -> Void)?
-    var bandFraction: Double = 0.25
+    /// Live per-(display, region) capture geometry. Seeded from the targets at start and updatable
+    /// without restarting the capture, so the geometry sliders respond instantly. Touched only on `queue`.
+    private var geoms: [CGDirectDisplayID: [SyncRegion: ZoneGeom]] = [:]
     var smoothing: Double = 0.35
     var saturation: Double = 1.25
 
@@ -109,6 +117,7 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             self.smoothed = [:]
             let o = SyncOutput(targets)
             self.out = o
+            self.geoms = Self.geomMap(targets)
             o.openStream()
             self.startKeepAlive()
             self.beginCapture(gen: gen, displays: o.displayIDs)
@@ -117,6 +126,16 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
 
     func stop() {
         queue.async { self.generation += 1; self.teardown() }
+    }
+
+    /// Update capture geometry live (slider drag) — no stream restart, no flicker.
+    func setGeoms(_ m: [CGDirectDisplayID: [SyncRegion: ZoneGeom]]) { queue.async { self.geoms = m } }
+
+    /// Collapse targets to one geometry per (display, region).
+    private static func geomMap(_ ts: [SyncTarget]) -> [CGDirectDisplayID: [SyncRegion: ZoneGeom]] {
+        var m: [CGDirectDisplayID: [SyncRegion: ZoneGeom]] = [:]
+        for t in ts { m[t.displayID, default: [:]][t.region] = ZoneGeom(band: t.band, length: t.length, center: t.center) }
+        return m
     }
 
     // MARK: - Capture setup
@@ -228,7 +247,6 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
         let ptr = base.assumingMemoryBound(to: UInt8.self)
         let k = min(1.0, max(0.05, smoothing))
 
-        var lumaFollow = -1.0
         // One physical stream can serve several requested display ids (e.g. a lamp pinned to an
         // unplugged screen that fell back to this one). Same pixels → route to each.
         for did in dids {
@@ -236,7 +254,8 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             guard !wanted.isEmpty else { continue }
             var sm = smoothed[did] ?? [:]
             for region in wanted {
-                let (rawR, rawG, rawB) = Self.regionAverage(ptr, w, h, bpr, region: region, band: bandFraction)
+                let geo = geoms[did]?[region] ?? ZoneGeom()
+                let (rawR, rawG, rawB) = Self.regionAverage(ptr, w, h, bpr, region: region, band: geo.band, length: geo.length, center: geo.center)
                 let avg = (rawR + rawG + rawB) / 3, boost = saturation
                 let r = min(255, max(0, avg + (rawR - avg) * boost))
                 let g = min(255, max(0, avg + (rawG - avg) * boost))
@@ -248,10 +267,9 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
                 // addressable strips: slice this region along its length and stream per-segment colours
                 let segN = out.maxSegments(on: did, region)
                 if segN > 0 {
-                    let slices = Self.regionSlices(ptr, w, h, bpr, region: region, band: bandFraction, n: max(2, segN), saturation: saturation)
+                    let slices = Self.regionSlices(ptr, w, h, bpr, region: region, band: geo.band, length: geo.length, center: geo.center, n: max(2, segN), saturation: saturation)
                     out.streamSegments(did, region, slices: slices)
                 }
-                if lumaFollow < 0 { lumaFollow = (0.299 * rawR + 0.587 * rawG + 0.114 * rawB) / 255 }
             }
             smoothed[did] = sm
         }
@@ -261,20 +279,41 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             let snapshot = smoothed.mapValues { $0.mapValues { (Int($0.r) << 16) | (Int($0.g) << 8) | Int($0.b) } }
             DispatchQueue.main.async { self.onRegionColors?(snapshot) }
         }
-        if frameCount % 10 == 0, lumaFollow >= 0 { let l = lumaFollow; DispatchQueue.main.async { self.onLuma?(l) } }
+        // "Brightness follows scene": track the WHOLE frame's average luma, computed deterministically.
+        // (Previously it sampled "whichever region the Set yielded first" — with top+bottom regions that
+        //  flip-flopped between bright top and dark bottom every frame, jittering the front-white brightness.)
+        if frameCount % 10 == 0, onLuma != nil {
+            let (fr, fg, fb) = Self.regionAverage(ptr, w, h, bpr, region: .full, band: 1.0)
+            let l = (0.299 * fr + 0.587 * fg + 0.114 * fb) / 255
+            DispatchQueue.main.async { self.onLuma?(l) }
+        }
+    }
+
+    /// Pixel bounds of a capture zone: `band` sets DEPTH inward from the edge; `length`/`center`
+    /// set the EXTENT and POSITION along the edge (clamped so the window stays on-screen).
+    private static func zoneBounds(_ w: Int, _ h: Int, region: SyncRegion,
+                                   band: Double, length: Double, center: Double) -> (Int, Int, Int, Int) {
+        let bw = max(1, Int(Double(w) * band)), bh = max(1, Int(Double(h) * band))
+        var x0 = 0, x1 = w, y0 = 0, y1 = h
+        func span(_ total: Int) -> (Int, Int) {
+            let len = max(1, min(total, Int(Double(total) * length)))
+            let start = max(0, min(Int(Double(total) * center) - len / 2, total - len))
+            return (start, start + len)
+        }
+        switch region {
+        case .top:    y1 = bh;     (x0, x1) = span(w)
+        case .bottom: y0 = h - bh; (x0, x1) = span(w)
+        case .left:   x1 = bw;     (y0, y1) = span(h)
+        case .right:  x0 = w - bw; (y0, y1) = span(h)
+        case .full:   break
+        }
+        return (x0, x1, y0, y1)
     }
 
     private static func regionAverage(_ ptr: UnsafePointer<UInt8>, _ w: Int, _ h: Int, _ bpr: Int,
-                                      region: SyncRegion, band: Double) -> (Double, Double, Double) {
-        let bw = max(1, Int(Double(w) * band)), bh = max(1, Int(Double(h) * band))
-        var x0 = 0, x1 = w, y0 = 0, y1 = h
-        switch region {
-        case .top:    y1 = bh
-        case .bottom: y0 = h - bh
-        case .left:   x1 = bw
-        case .right:  x0 = w - bw
-        case .full:   break
-        }
+                                      region: SyncRegion, band: Double,
+                                      length: Double = 1.0, center: Double = 0.5) -> (Double, Double, Double) {
+        let (x0, x1, y0, y1) = zoneBounds(w, h, region: region, band: band, length: length, center: center)
         var rs = 0.0, gs = 0.0, bs = 0.0, n = 0.0
         var y = y0
         while y < y1 {
@@ -294,22 +333,20 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
     /// Slice a region into `n` colours along its length: top/bottom/full → left→right columns;
     /// left/right → top→bottom rows. Used to drive addressable strips per-segment.
     private static func regionSlices(_ ptr: UnsafePointer<UInt8>, _ w: Int, _ h: Int, _ bpr: Int,
-                                     region: SyncRegion, band: Double, n: Int, saturation: Double) -> [Int] {
-        let bw = max(1, Int(Double(w) * band)), bh = max(1, Int(Double(h) * band))
-        var x0 = 0, x1 = w, y0 = 0, y1 = h
-        switch region {
-        case .top:    y1 = bh
-        case .bottom: y0 = h - bh
-        case .left:   x1 = bw
-        case .right:  x0 = w - bw
-        case .full:   break
-        }
+                                     region: SyncRegion, band: Double, length: Double, center: Double,
+                                     n: Int, saturation: Double) -> [Int] {
+        let (x0, x1, y0, y1) = zoneBounds(w, h, region: region, band: band, length: length, center: center)
         let vertical = (region == .left || region == .right)
-        var out = [Int](); out.reserveCapacity(n)
-        for s in 0..<n {
+        // Never make more buckets than the captured span has pixels, else narrow spans (short "Length")
+        // would slice into zero-width columns that read as black gaps. Average over m real buckets, then
+        // fan out to the requested n segments — each backed by real pixels, no black holes.
+        let extent = vertical ? (y1 - y0) : (x1 - x0)
+        let m = max(1, min(n, extent))
+        var buckets = [Int](); buckets.reserveCapacity(m)
+        for s in 0..<m {
             var sx0 = x0, sx1 = x1, sy0 = y0, sy1 = y1
-            if vertical { sy0 = y0 + (y1 - y0) * s / n; sy1 = y0 + (y1 - y0) * (s + 1) / n }
-            else        { sx0 = x0 + (x1 - x0) * s / n; sx1 = x0 + (x1 - x0) * (s + 1) / n }
+            if vertical { sy0 = y0 + (y1 - y0) * s / m; sy1 = y0 + (y1 - y0) * (s + 1) / m }
+            else        { sx0 = x0 + (x1 - x0) * s / m; sx1 = x0 + (x1 - x0) * (s + 1) / m }
             var rs = 0.0, gs = 0.0, bs = 0.0, cnt = 0.0
             var y = sy0
             while y < sy1 {
@@ -322,14 +359,14 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
                 }
                 y += 1
             }
-            guard cnt > 0 else { out.append(0); continue }
+            guard cnt > 0 else { buckets.append(buckets.last ?? 0); continue }
             var r = rs / cnt, g = gs / cnt, b = bs / cnt
             let avg = (r + g + b) / 3
             r = min(255, max(0, avg + (r - avg) * saturation))
             g = min(255, max(0, avg + (g - avg) * saturation))
             b = min(255, max(0, avg + (b - avg) * saturation))
-            out.append((Int(r) << 16) | (Int(g) << 8) | Int(b))
+            buckets.append((Int(r) << 16) | (Int(g) << 8) | Int(b))
         }
-        return out
+        return (0..<n).map { buckets[$0 * m / n] }
     }
 }

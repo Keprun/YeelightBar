@@ -30,36 +30,67 @@ struct FullView: View {
     @State private var assignTarget: CGDirectDisplayID?
 
     var body: some View {
-        NavigationSplitView {
-            VStack(spacing: 0) {
-                sidebarHeader.padding(14)
-                Rectangle().fill(Color.razerHairline).frame(height: 1)
-                List(AppSection.allCases, selection: $section) { s in
-                    Label(s.title, systemImage: s.icon)
-                        .font(.system(size: 12, weight: .bold)).textCase(.uppercase).tracking(0.8)
-                        .tag(s)
+        VStack(spacing: 0) {
+            titleBar
+            NavigationSplitView {
+                VStack(spacing: 0) {
+                    sidebarHeader.padding(14)
+                    Rectangle().fill(Color.razerHairline).frame(height: 1)
+                    List(AppSection.allCases, selection: $section) { s in
+                        Label(s.title, systemImage: s.icon)
+                            .font(.system(size: 12, weight: .bold)).textCase(.uppercase).tracking(0.8)
+                            .tag(s)
+                    }
+                    .listStyle(.sidebar)
+                    .scrollContentBackground(.hidden)
                 }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
-            }
-            .background(Color.razerBG)
-            .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 250)
-        } detail: {
-            ZStack {
-                RazerBackground()
-                ScrollView {
-                    detail
-                        .padding(28)
-                        .frame(maxWidth: 660, alignment: .leading)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background(Color.razerBG)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 250)
+            } detail: {
+                ZStack {
+                    RazerBackground()
+                    ScrollView {
+                        detail
+                            .padding(28)
+                            .frame(maxWidth: 660, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+                    .scrollContentBackground(.hidden)
                 }
-                .scrollContentBackground(.hidden)
             }
-            .navigationTitle(section.title)
         }
         .frame(minWidth: 820, idealWidth: 880, minHeight: 580, idealHeight: 680)
+        .background(WindowConfigurator())
         .razerChrome()
         .onAppear { lamp.refreshScreenPermission(); lamp.refreshDisplays() }
+    }
+
+    /// Custom window chrome replacing the standard title bar: neon wordmark + live status,
+    /// the whole strip is part of the draggable window background.
+    private var titleBar: some View {
+        HStack(spacing: 8) {
+            Spacer().frame(width: 70)                       // keep clear of the traffic-light buttons
+            Image(systemName: "bolt.fill").font(.system(size: 12))
+                .foregroundStyle(Color.razerGreen).razerPulse(lamp.connected)
+            Text("YEELIGHT").font(.system(size: 13, weight: .heavy)).tracking(2.5).foregroundStyle(Color.razerText)
+            Text("BAR").font(.system(size: 13, weight: .heavy)).tracking(2.5).foregroundStyle(Color.razerGreen)
+            Spacer()
+            HStack(spacing: 6) {
+                Circle().fill(lamp.connected ? Color.razerGreen : Color.gray)
+                    .frame(width: 7, height: 7).razerPulse(lamp.connected)
+                Text(lamp.connected ? "ONLINE" : "OFFLINE")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.razerSecondary)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(Color.razerSurface, in: Capsule())
+            .overlay(Capsule().stroke(Color.razerHairline, lineWidth: 1))
+            .padding(.trailing, 14)
+        }
+        .frame(height: 42)
+        .frame(maxWidth: .infinity)
+        .background(LinearGradient(colors: [.razerBGTop, .razerBG], startPoint: .top, endPoint: .bottom))
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.razerGreen.opacity(0.45)).frame(height: 1) }
     }
 
     private var sidebarHeader: some View {
@@ -217,6 +248,15 @@ struct FullView: View {
                                         Button("Весь экран") { lamp.setRegion(d.ip, .full) }
                                     }.fixedSize()
                                 }
+                                if (lamp.displayRegion(d.ip) ?? .top) != .full {
+                                    VStack(spacing: 4) {
+                                        captureSlider("Ширина", lamp.bandFor(d.ip), { lamp.setBand(d.ip, $0) }, 0.05...1.0)
+                                        captureSlider("Длина", lamp.lengthFor(d.ip), { lamp.setLength(d.ip, $0) }, 0.05...1.0)
+                                        if lamp.lengthFor(d.ip) < 0.99 {
+                                            captureSlider("Центр", lamp.centerFor(d.ip), { lamp.setCenter(d.ip, $0) }, 0.0...1.0)
+                                        }
+                                    }.padding(.leading, 22)
+                                }
                                 if lamp.isAddressable(d) {
                                     let n = lamp.segments(forLamp: d.ip)
                                     HStack(spacing: 10) {
@@ -239,7 +279,6 @@ struct FullView: View {
                 }
                 GroupBox("Настройка") {
                     VStack(alignment: .leading, spacing: 16) {
-                        slider("Размер зоны", $lamp.bandFraction, 0.1...0.6, { "\(Int($0 * 100))%" })
                         Toggle("Яркость следует за яркостью сцены", isOn: $lamp.brightnessFollow)
                         slider("Плавность", $lamp.syncSmoothing, 0.1...0.8, { "\(Int($0 * 100))%" })
                         slider("Насыщенность", $lamp.syncSaturation, 1.0...2.0, { String(format: "%.1f×", $0) })
@@ -403,7 +442,7 @@ struct FullView: View {
         return ZStack {
             RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82))   // the "screen"
             ForEach(zones, id: \.region) { z in
-                let f = zoneFrac(z.region)
+                let f = zoneFrac(z.region, z.band, z.length, z.center)
                 Rectangle().fill(colors[z.region] ?? Color.white.opacity(0.12))
                     .frame(width: w * f.w, height: h * f.h)
                     .position(x: w * (f.x + f.w / 2), y: h * (f.y + f.h / 2))
@@ -426,27 +465,34 @@ struct FullView: View {
     }
 
     /// Zones assigned on a given display, with the short names of the lamp(s) on each.
-    private func zonesOn(_ did: CGDirectDisplayID) -> [(region: SyncRegion, label: String)] {
+    private func zonesOn(_ did: CGDirectDisplayID) -> [(region: SyncRegion, label: String, band: CGFloat, length: CGFloat, center: CGFloat)] {
         var byRegion: [SyncRegion: [String]] = [:]
+        var geomByRegion: [SyncRegion: (CGFloat, CGFloat, CGFloat)] = [:]
         for d in lamp.devices where lamp.groupIPs.contains(d.ip) && lamp.displayID(forLamp: d.ip) == did {
-            byRegion[lamp.displayRegion(d.ip) ?? .top, default: []].append(shortName(d))
+            let r = lamp.displayRegion(d.ip) ?? .top
+            byRegion[r, default: []].append(shortName(d))
+            geomByRegion[r] = (CGFloat(lamp.bandFor(d.ip)), CGFloat(lamp.lengthFor(d.ip)), CGFloat(lamp.centerFor(d.ip)))
         }
         let order: [SyncRegion] = [.full, .top, .bottom, .left, .right]
-        return order.compactMap { r in byRegion[r].map { (r, $0.joined(separator: ", ")) } }
+        return order.compactMap { r in byRegion[r].map { names in
+            let g = geomByRegion[r] ?? (0.25, 1, 0.5)
+            return (r, names.joined(separator: ", "), g.0, g.1, g.2)
+        } }
     }
 
     private func displayShort(_ did: CGDirectDisplayID) -> String {
         lamp.displays.first(where: { $0.id == did })?.short ?? "экран"
     }
 
-    private func zoneFrac(_ r: SyncRegion) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
-        let b = CGFloat(lamp.bandFraction)
+    private func zoneFrac(_ r: SyncRegion, _ b: CGFloat, _ len: CGFloat, _ c: CGFloat) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
+        let l = max(0, min(1, len))
+        let start = max(0, min(c - l / 2, 1 - l))   // mirror the engine's clamped span along the edge
         switch r {
         case .full:   return (0, 0, 1, 1)
-        case .top:    return (0, 0, 1, b)
-        case .bottom: return (0, 1 - b, 1, b)
-        case .left:   return (0, 0, b, 1)
-        case .right:  return (1 - b, 0, b, 1)
+        case .top:    return (start, 0, l, b)
+        case .bottom: return (start, 1 - b, l, b)
+        case .left:   return (0, start, b, l)
+        case .right:  return (1 - b, start, b, l)
         }
     }
 
@@ -458,6 +504,17 @@ struct FullView: View {
     }
 
     // MARK: helpers
+
+    /// Compact labelled slider for the per-lamp capture geometry (depth / length / centre).
+    private func captureSlider(_ label: String, _ value: Double, _ set: @escaping (Double) -> Void,
+                               _ range: ClosedRange<Double>) -> some View {
+        HStack(spacing: 8) {
+            Text(label).font(.caption).foregroundStyle(Color.razerSecondary).frame(width: 52, alignment: .leading)
+            Slider(value: Binding(get: { value }, set: set), in: range)
+            Text("\(Int(value * 100))%").font(.caption2).monospacedDigit()
+                .frame(width: 40, alignment: .trailing).foregroundStyle(Color.razerSecondary)
+        }
+    }
 
     private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>,
                         _ display: @escaping (Double) -> String, _ commit: @escaping () -> Void = {}) -> some View {
@@ -496,4 +553,22 @@ struct FullView: View {
         Color(rgb: 0xFF5A3C), Color(rgb: 0xFFB23E), Color(rgb: 0xF5E6C8),
         Color(rgb: 0x2EC28E), Color(rgb: 0x378ADD), Color(rgb: 0xE30DFF),
     ]
+}
+
+/// Turns the host NSWindow into a borderless, full-bleed custom chrome: transparent title bar,
+/// no system title, draggable by its background, Razer-dark backing colour.
+private struct WindowConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        DispatchQueue.main.async {
+            guard let w = v.window else { return }
+            w.titlebarAppearsTransparent = true
+            w.titleVisibility = .hidden
+            w.isMovableByWindowBackground = true
+            w.styleMask.insert(.fullSizeContentView)
+            w.backgroundColor = NSColor(Color.razerBG)
+        }
+        return v
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

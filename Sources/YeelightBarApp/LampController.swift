@@ -49,7 +49,9 @@ final class LampController: ObservableObject {
     @Published var segmentReversed: [String: Bool] = [:] {
         didSet { if !suppressRegionRestart, screenSyncOn { sync.stop(); sync.start(targets: syncTargets()) } }
     }
-    @Published var bandFraction: Double = 0.25 { didSet { sync.bandFraction = bandFraction } }
+    @Published var syncBands: [String: Double] = [:] { didSet { pushGeoms() } }     // per-lamp capture depth
+    @Published var syncLengths: [String: Double] = [:] { didSet { pushGeoms() } }   // per-lamp capture length (along the edge)
+    @Published var syncCenters: [String: Double] = [:] { didSet { pushGeoms() } }   // where that length is centred
     @Published var brightnessFollow = false
     @Published var syncSmoothing: Double = 0.35 { didSet { sync.smoothing = syncSmoothing } }
     @Published var syncSaturation: Double = 1.25 { didSet { sync.saturation = syncSaturation } }
@@ -66,6 +68,7 @@ final class LampController: ObservableObject {
     private var device: YeelightDevice?
     private var ambientWork: DispatchWorkItem?
     private var lastBrightSend = Date.distantPast
+    private var lumaEMA = -1.0   // smoothed scene luma for brightness-follow (-1 = unseeded)
     private var pollTimer: Timer?
     private var pollMisses = 0
     private var pollEpoch = 0
@@ -88,7 +91,6 @@ final class LampController: ObservableObject {
             }
         }
         sync.onLuma = { [weak self] luma in self?.applyLuma(luma) }
-        sync.bandFraction = bandFraction
         sync.smoothing = syncSmoothing
         sync.saturation = syncSaturation
         music.onState = { [weak self] running, err in self?.musicSyncOn = running; self?.musicSyncStatus = err }
@@ -352,6 +354,9 @@ final class LampController: ObservableObject {
                         if let dz = self.syncDisplays.removeValue(forKey: oldIP) { self.syncDisplays[match.ip] = dz }
                         if let sn = self.segmentCount.removeValue(forKey: oldIP) { self.segmentCount[match.ip] = sn }
                         if let sr = self.segmentReversed.removeValue(forKey: oldIP) { self.segmentReversed[match.ip] = sr }
+                        if let bd = self.syncBands.removeValue(forKey: oldIP) { self.syncBands[match.ip] = bd }
+                        if let ln = self.syncLengths.removeValue(forKey: oldIP) { self.syncLengths[match.ip] = ln }
+                        if let cn = self.syncCenters.removeValue(forKey: oldIP) { self.syncCenters[match.ip] = cn }
                         self.suppressRegionRestart = false
                     }
                     self.groupIPs = self.groupIPs.intersection(live).union([match.ip])
@@ -543,12 +548,33 @@ final class LampController: ObservableObject {
             SyncTarget(ip: d.ip, port: d.port, method: streamMethod(for: d),
                        region: syncRegions[d.ip] ?? .top, displayID: displayID(forLamp: d.ip),
                        segments: isAddressable(d) ? (segmentCount[d.ip] ?? 0) : 0,
-                       reversed: segmentReversed[d.ip] ?? false)
+                       reversed: segmentReversed[d.ip] ?? false,
+                       band: bandFor(d.ip), length: lengthFor(d.ip), center: centerFor(d.ip))
         }
     }
 
     func setRegion(_ ip: String, _ region: SyncRegion?) {
         if let region { syncRegions[ip] = region } else { syncRegions.removeValue(forKey: ip) }
+    }
+
+    /// Per-lamp capture geometry. Depth (band) inward from the edge, length along the edge, and the
+    /// centre of that length. All default to "the whole edge, 25 % deep" → unchanged from before.
+    func bandFor(_ ip: String) -> Double { syncBands[ip] ?? 0.25 }
+    func lengthFor(_ ip: String) -> Double { syncLengths[ip] ?? 1.0 }
+    func centerFor(_ ip: String) -> Double { syncCenters[ip] ?? 0.5 }
+    func setBand(_ ip: String, _ v: Double) { syncBands[ip] = v }       // didSet → pushGeoms (live, no restart)
+    func setLength(_ ip: String, _ v: Double) { syncLengths[ip] = v }
+    func setCenter(_ ip: String, _ v: Double) { syncCenters[ip] = v }
+
+    /// Push the group's current per-zone capture geometry into a running engine without restarting it.
+    private func pushGeoms() {
+        guard screenSyncOn else { return }
+        var m: [CGDirectDisplayID: [SyncRegion: ZoneGeom]] = [:]
+        for d in devices where groupIPs.contains(d.ip) {
+            let did = displayID(forLamp: d.ip), r = syncRegions[d.ip] ?? .top
+            m[did, default: [:]][r] = ZoneGeom(band: bandFor(d.ip), length: lengthFor(d.ip), center: centerFor(d.ip))
+        }
+        sync.setGeoms(m)
     }
 
     /// Zone shown in the menu: a group member defaults to top (never «Выкл»); others show nil.
@@ -653,15 +679,18 @@ final class LampController: ObservableObject {
     }
 
     /// Brightness-follow: front bar tracks scene luminance, throttled to stay under the TCP quota.
+    /// The luma is heavily smoothed (slow EMA) so the front white settles on the scene's *overall*
+    /// brightness and adapts gently — it must not chase per-frame capture noise (that read as a jitter).
     private func applyLuma(_ luma: Double) {
-        guard brightnessFollow, connected else { return }
-        let target = Int(15 + luma * 85)               // 15…100%
+        guard brightnessFollow, connected else { lumaEMA = -1; return }
+        lumaEMA = lumaEMA < 0 ? luma : lumaEMA + (luma - lumaEMA) * 0.08
+        let target = Int(15 + lumaEMA * 85)            // 15…100%
         let now = Date()
-        guard now.timeIntervalSince(lastBrightSend) > 1.2,
-              abs(Double(target) - brightness) > 4 else { return }
+        guard now.timeIntervalSince(lastBrightSend) > 2.0,
+              abs(Double(target) - brightness) >= 6 else { return }
         lastBrightSend = now
         brightness = Double(target)
-        fanOut { dev, _ in self.send(dev, "set_bright", [target, "smooth", 300]) }
+        fanOut { dev, _ in self.send(dev, "set_bright", [target, "smooth", 800]) }
     }
 
     /// Re-read lamp state shortly after a discrete action (e.g. power) so the UI
