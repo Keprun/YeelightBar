@@ -1,0 +1,42 @@
+<svg width="100%" viewBox="0 0 900 600" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>YeelightBar — Light</title>
+<desc>Dark Razer-themed app window, Light tab: front-white power + brightness/warmth sliders and an ambient colour picker.</desc>
+<defs>
+<linearGradient id="win2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171B17"/><stop offset="1" stop-color="#121512"/></linearGradient>
+<linearGradient id="warm2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF9A3C"/><stop offset="0.5" stop-color="#FFF6EC"/><stop offset="1" stop-color="#BCD4FF"/></linearGradient>
+<linearGradient id="hue2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF3B3B"/><stop offset="0.2" stop-color="#FFE600"/><stop offset="0.4" stop-color="#44D62C"/><stop offset="0.6" stop-color="#00D0E0"/><stop offset="0.8" stop-color="#3366FF"/><stop offset="1" stop-color="#FF2CB0"/></linearGradient>
+</defs>
+<rect x="1" y="1" width="898" height="598" rx="14" fill="url(#win2)" stroke="#44D62C" stroke-opacity="0.22"/>
+<circle cx="24" cy="22" r="6" fill="#FF5F57"/><circle cx="44" cy="22" r="6" fill="#FEBC2E"/><circle cx="64" cy="22" r="6" fill="#28C840"/>
+<rect x="1" y="40" width="212" height="559" fill="#11140F"/>
+<path d="M30 56 L24 70 L30 70 L27 80 L38 64 L31 64 Z" fill="#44D62C"/>
+<text x="44" y="62" font-family="Arial" font-size="12.5" font-weight="900" letter-spacing="0.6" fill="#EAF2E8">SCREEN LIGHT BA…</text>
+<circle cx="46" cy="74" r="3" fill="#44D62C"/><text x="54" y="78" font-family="monospace" font-size="9" fill="#8FA889">ONLINE · 192.168.88.110</text>
+<rect x="170" y="52" width="30" height="16" rx="8" fill="#44D62C"/><circle cx="192" cy="60" r="6" fill="#EAF2E8"/>
+<line x1="14" y1="96" x2="200" y2="96" stroke="#44D62C" stroke-opacity="0.2"/>
+<rect x="8" y="106" width="196" height="30" rx="4" fill="#44D62C" fill-opacity="0.14"/><rect x="8" y="106" width="3" height="30" fill="#44D62C"/>
+<text x="22" y="126" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#44D62C">☀  СВЕТ</text>
+<text x="22" y="166" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">▦  ЭФФЕКТЫ</text>
+<text x="22" y="206" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◫  СЦЕНЫ</text>
+<text x="22" y="246" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◍  УСТРОЙСТВА</text>
+<text x="238" y="66" font-family="Arial" font-size="16" font-weight="900" letter-spacing="1.2" fill="#EAF2E8">СВЕТ</text>
+<text x="238" y="104" font-family="Arial" font-size="14" font-weight="600" fill="#EAF2E8">Передний свет</text>
+<text x="238" y="122" font-family="Arial" font-size="10" fill="#8FA889">белый свет на монитор — независим от подсветки ниже</text>
+<rect x="612" y="92" width="40" height="22" rx="11" fill="#44D62C"/><circle cx="641" cy="103" r="9" fill="#EAF2E8"/>
+<path d="M249 144 L666 144 L666 244 L658 252 L238 252 L238 152 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="164" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ПЕРЕДНИЙ БЕЛЫЙ СВЕТ</text>
+<text x="254" y="194" font-family="Arial" font-size="12" fill="#C7D3C2">Яркость</text>
+<rect x="330" y="190" width="280" height="5" rx="2.5" fill="#34403 4"/><rect x="330" y="190" width="112" height="5" rx="2.5" fill="#44D62C"/><circle cx="442" cy="192.5" r="7" fill="#EAF2E8"/>
+<rect x="624" y="184" width="40" height="18" rx="3" fill="#44D62C" fill-opacity="0.12" stroke="#44D62C" stroke-opacity="0.4"/><text x="644" y="197" text-anchor="middle" font-family="monospace" font-size="10" font-weight="700" fill="#44D62C">40%</text>
+<text x="254" y="230" font-family="Arial" font-size="12" fill="#C7D3C2">Тёплость</text>
+<rect x="330" y="223" width="280" height="9" rx="4" fill="url(#warm2)"/><circle cx="338" cy="227.5" r="7" fill="#EAF2E8"/>
+<rect x="620" y="220" width="46" height="18" rx="3" fill="#44D62C" fill-opacity="0.12" stroke="#44D62C" stroke-opacity="0.4"/><text x="643" y="233" text-anchor="middle" font-family="monospace" font-size="10" font-weight="700" fill="#44D62C">2700K</text>
+<text x="238" y="296" font-family="Arial" font-size="14" font-weight="600" fill="#EAF2E8">Подсветка включена</text>
+<rect x="612" y="284" width="40" height="22" rx="11" fill="#44D62C"/><circle cx="641" cy="295" r="9" fill="#EAF2E8"/>
+<path d="M249 320 L666 320 L666 548 L658 556 L238 556 L238 328 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="340" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ЦВЕТ ПОДСВЕТКИ</text>
+<text x="254" y="372" font-family="Arial" font-size="12" fill="#9AA892">Текущий цвет</text>
+<rect x="612" y="356" width="40" height="40" rx="6" fill="#E30DFF" stroke="#44D62C" stroke-opacity="0.4"/>
+<rect x="254" y="414" width="412" height="28" rx="14" fill="url(#hue2)"/>
+<rect x="254" y="460" width="40" height="40" rx="8" fill="#FF5A3C"/><rect x="312" y="460" width="40" height="40" rx="8" fill="#FFB23E"/><rect x="370" y="460" width="40" height="40" rx="8" fill="#F5E6C8"/><rect x="428" y="460" width="40" height="40" rx="8" fill="#2EC28E"/><rect x="486" y="460" width="40" height="40" rx="8" fill="#378ADD"/><rect x="544" y="460" width="40" height="40" rx="8" fill="#E30DFF"/>
+</svg>

@@ -1,0 +1,61 @@
+<svg width="100%" viewBox="0 0 460 580" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>YeelightBar — menu-bar panel</title>
+<desc>macOS menu bar with the YeelightBar bolt icon, and its compact drop-down control panel below.</desc>
+<defs>
+<linearGradient id="desk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2622"/><stop offset="1" stop-color="#1c2420"/></linearGradient>
+<linearGradient id="hero" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFC98A"/><stop offset="0.55" stop-color="#7FB0E0"/><stop offset="1" stop-color="#B86FE0"/></linearGradient>
+<linearGradient id="hue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF3B3B"/><stop offset="0.2" stop-color="#FFE600"/><stop offset="0.4" stop-color="#44D62C"/><stop offset="0.6" stop-color="#00D0E0"/><stop offset="0.8" stop-color="#3366FF"/><stop offset="1" stop-color="#FF2CB0"/></linearGradient>
+<linearGradient id="warm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF9A3C"/><stop offset="0.5" stop-color="#FFF6EC"/><stop offset="1" stop-color="#BCD4FF"/></linearGradient>
+</defs>
+<rect width="460" height="580" fill="url(#desk)"/>
+<rect x="0" y="0" width="460" height="26" fill="#0E0F0E" fill-opacity="0.82"/>
+<text x="12" y="17" font-family="Arial" font-size="11" font-weight="700" fill="#D8DCD6">●</text>
+<text x="30" y="17" font-family="Arial" font-size="11" fill="#C7CDC6">YeelightBar  File  Edit  View</text>
+<text x="300" y="17" font-family="Arial" font-size="10" fill="#9AA099">2.4G</text>
+<rect x="326" y="3" width="22" height="20" rx="5" fill="#44D62C" fill-opacity="0.22"/>
+<path d="M339 7 L334 15 L338 15 L336 21 L344 12 L339 12 Z" fill="#44D62C"/>
+<text x="356" y="17" font-family="Arial" font-size="10" fill="#C7CDC6">◐  ◑</text>
+<text x="394" y="17" font-family="Arial" font-size="10" fill="#C7CDC6">РУ</text>
+<text x="420" y="17" font-family="monospace" font-size="10" fill="#C7CDC6">9:52</text>
+<rect x="114" y="32" width="344" height="538" rx="12" fill="#161916" stroke="#44D62C" stroke-opacity="0.28"/>
+<path d="M337 32 l7 -7 l7 7 z" fill="#161916"/>
+<text x="132" y="60" font-family="Arial" font-size="13" font-weight="900" letter-spacing="0.5" fill="#44D62C">Screen Light Bar Pro ▾</text>
+<rect x="408" y="50" width="34" height="18" rx="9" fill="#44D62C"/><circle cx="433" cy="59" r="7" fill="#EAF2E8"/>
+<rect x="150" y="80" width="272" height="9" rx="4.5" fill="url(#hero)" stroke="#44D62C" stroke-opacity="0.5"/>
+<text x="132" y="112" font-family="Arial" font-size="10" fill="#8FA889">Front · white</text>
+<text x="132" y="135" font-family="Arial" font-size="12" fill="#9AA892">☀</text>
+<rect x="156" y="129" width="218" height="5" rx="2.5" fill="#34403 4"/><rect x="156" y="129" width="62" height="5" rx="2.5" fill="#44D62C"/><circle cx="218" cy="131.5" r="7" fill="#EAF2E8"/>
+<rect x="388" y="123" width="40" height="17" rx="3" fill="#44D62C" fill-opacity="0.12" stroke="#44D62C" stroke-opacity="0.4"/><text x="408" y="135" text-anchor="middle" font-family="monospace" font-size="10" font-weight="700" fill="#44D62C">20%</text>
+<text x="132" y="160" font-family="Arial" font-size="12" fill="#9AA892">🌡</text>
+<rect x="156" y="153" width="218" height="9" rx="4" fill="url(#warm)"/>
+<rect x="384" y="149" width="48" height="17" rx="3" fill="#44D62C" fill-opacity="0.12" stroke="#44D62C" stroke-opacity="0.4"/><text x="408" y="161" text-anchor="middle" font-family="monospace" font-size="10" font-weight="700" fill="#44D62C">5600K</text>
+<line x1="132" y1="180" x2="442" y2="180" stroke="#44D62C" stroke-opacity="0.14"/>
+<text x="132" y="201" font-family="Arial" font-size="10" fill="#8FA889">Ambient</text>
+<rect x="380" y="191" width="14" height="14" rx="3" fill="#B86FE0"/><rect x="404" y="192" width="30" height="14" rx="7" fill="#44D62C"/><circle cx="427" cy="199" r="5" fill="#EAF2E8"/>
+<rect x="132" y="210" width="302" height="16" rx="8" fill="url(#hue)"/>
+<rect x="132" y="234" width="24" height="22" rx="5" fill="#FF5A3C"/><rect x="162" y="234" width="24" height="22" rx="5" fill="#FFB23E"/><rect x="192" y="234" width="24" height="22" rx="5" fill="#F5E6C8"/><rect x="222" y="234" width="24" height="22" rx="5" fill="#2EC28E"/><rect x="252" y="234" width="24" height="22" rx="5" fill="#378ADD"/><rect x="282" y="234" width="24" height="22" rx="5" fill="#E30DFF"/>
+<line x1="132" y1="274" x2="442" y2="274" stroke="#44D62C" stroke-opacity="0.14"/>
+<text x="132" y="295" font-family="Arial" font-size="10" fill="#8FA889">Эффект ambient</text>
+<rect x="132" y="302" width="302" height="26" rx="6" fill="#232723" stroke="#44D62C" stroke-opacity="0.22"/>
+<text x="177" y="319" text-anchor="middle" font-family="Arial" font-size="11" fill="#9AA892">Выкл</text>
+<rect x="233" y="305" width="100" height="20" rx="4" fill="#44D62C"/><text x="283" y="319" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#0E110E">Экран</text>
+<text x="388" y="319" text-anchor="middle" font-family="Arial" font-size="11" fill="#9AA892">Музыка</text>
+<text x="132" y="350" font-family="Arial" font-size="11" fill="#C7D3C2">Screen Light Bar Pro <tspan fill="#7E8A7A" font-size="9">.110</tspan></text>
+<text x="434" y="350" text-anchor="end" font-family="Arial" font-size="11" fill="#44D62C">Верх ▾</text>
+<text x="132" y="372" font-family="Arial" font-size="11" fill="#C7D3C2">strip8 <tspan fill="#7E8A7A" font-size="9">.235</tspan></text>
+<text x="434" y="372" text-anchor="end" font-family="Arial" font-size="11" fill="#44D62C">Низ ▾</text>
+<line x1="132" y1="386" x2="442" y2="386" stroke="#44D62C" stroke-opacity="0.14"/>
+<text x="132" y="406" font-family="Arial" font-size="11" fill="#C7D3C2">Область</text>
+<rect x="220" y="402" width="160" height="5" rx="2.5" fill="#34403 4"/><rect x="220" y="402" width="30" height="5" rx="2.5" fill="#44D62C"/><circle cx="250" cy="404.5" r="6" fill="#EAF2E8"/><text x="434" y="409" text-anchor="end" font-family="monospace" font-size="10" fill="#8FA889">19%</text>
+<text x="132" y="430" font-family="Arial" font-size="11" fill="#C7D3C2">Плавность</text>
+<rect x="220" y="426" width="160" height="5" rx="2.5" fill="#34403 4"/><rect x="220" y="426" width="56" height="5" rx="2.5" fill="#44D62C"/><circle cx="276" cy="428.5" r="6" fill="#EAF2E8"/><text x="434" y="433" text-anchor="end" font-family="monospace" font-size="10" fill="#8FA889">35%</text>
+<text x="132" y="454" font-family="Arial" font-size="11" fill="#C7D3C2">Насыщ.</text>
+<rect x="220" y="450" width="160" height="5" rx="2.5" fill="#34403 4"/><rect x="220" y="450" width="112" height="5" rx="2.5" fill="#44D62C"/><circle cx="332" cy="452.5" r="6" fill="#EAF2E8"/><text x="434" y="457" text-anchor="end" font-family="monospace" font-size="10" fill="#8FA889">1.5×</text>
+<text x="132" y="486" font-family="Arial" font-size="10" fill="#8FA889">Scenes</text>
+<rect x="132" y="492" width="68" height="24" rx="4" fill="#232723" stroke="#3a423a"/><text x="166" y="508" text-anchor="middle" font-family="Arial" font-size="10" fill="#C7D3C2">Reading</text>
+<rect x="206" y="492" width="58" height="24" rx="4" fill="#232723" stroke="#3a423a"/><text x="235" y="508" text-anchor="middle" font-family="Arial" font-size="10" fill="#C7D3C2">Relax</text>
+<rect x="270" y="492" width="58" height="24" rx="4" fill="#232723" stroke="#3a423a"/><text x="299" y="508" text-anchor="middle" font-family="Arial" font-size="10" fill="#C7D3C2">Focus</text>
+<rect x="334" y="492" width="60" height="24" rx="4" fill="#232723" stroke="#3a423a"/><text x="364" y="508" text-anchor="middle" font-family="Arial" font-size="10" fill="#C7D3C2">Movie</text>
+<line x1="114" y1="534" x2="458" y2="534" stroke="#44D62C" stroke-opacity="0.14"/>
+<text x="132" y="554" font-family="Arial" font-size="10" fill="#8FA889">▤  Devices</text><text x="210" y="554" font-family="Arial" font-size="10" fill="#8FA889">▢  Окно</text><text x="430" y="554" text-anchor="end" font-family="Arial" font-size="11" fill="#8FA889">⏻</text>
+</svg>

@@ -28,6 +28,31 @@
 
 <p align="center"><b>No cloud · no account · everything over your LAN.</b></p>
 
+## Screenshots
+
+<p align="center">
+  <img src=".github/screenshots/screen-ambilight.svg" alt="Screen-sync ambilight" width="780"><br>
+  <sub><b>Screen-sync ambilight</b> — each lamp samples its own display &amp; region; addressable strips map per-segment, all over a live monitor map.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/light-ambient.svg" alt="Light &amp; ambient"></td>
+    <td width="50%"><img src=".github/screenshots/device-groups.svg" alt="Device groups"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Light &amp; ambient</b> — independent front-white &amp; ambient-RGB channels.</sub></td>
+    <td align="center"><sub><b>Device groups</b> — multi-select lamps, controlled together.</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src=".github/screenshots/menu-bar.svg" alt="Menu-bar quick controls" width="320"><br>
+  <sub><b>Menu-bar quick controls</b> — power, brightness, ambient &amp; effects without opening the window.</sub>
+</p>
+
+<sub><i>UI mockups rendered to scale from the app's actual layout &amp; theme.</i></sub>
+
 ## Features
 
 - **Full control** — power, front white (brightness + colour temperature), ambient RGB, ready-made scenes.
