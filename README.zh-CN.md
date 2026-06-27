@@ -8,7 +8,7 @@
   <img alt="SwiftUI" src="https://img.shields.io/badge/UI-SwiftUI-44D62C?style=flat-square&labelColor=0A0C0A">
   <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-44D62C?style=flat-square&labelColor=0A0C0A">
   <img alt="LAN only" src="https://img.shields.io/badge/cloud-none%20%C2%B7%20LAN%20only-44D62C?style=flat-square&labelColor=0A0C0A">
-  <img alt="Stars" src="https://img.shields.io/github/stars/VFI-Tech/YeelightBar?style=flat-square&labelColor=0A0C0A&color=44D62C">
+  <img alt="Stars" src="https://img.shields.io/github/stars/Keprun/YeelightBar?style=flat-square&labelColor=0A0C0A&color=44D62C">
 </p>
 
 [English](README.md) · [Русский](README.ru.md) · **中文** · [فارسی](README.fa.md) · [Español](README.es.md) · [العربية](README.ar.md)
