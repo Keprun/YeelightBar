@@ -1,16 +1,28 @@
 import SwiftUI
+import AppKit
 
-// MARK: - Razer Synapse-inspired palette & components
+// MARK: - Razer Synapse-inspired palette & components (adapts to macOS Light / Dark / Auto)
+
+/// A colour with separate Light and Dark values — follows the system appearance (incl. the
+/// time-of-day "Auto" switch), so the app goes dark at night and light by day.
+private func dyn(_ light: (CGFloat, CGFloat, CGFloat), _ dark: (CGFloat, CGFloat, CGFloat)) -> Color {
+    Color(nsColor: NSColor(name: nil) { ap in
+        let isDark = ap.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let c = isDark ? dark : light
+        return NSColor(srgbRed: c.0, green: c.1, blue: c.2, alpha: 1)
+    })
+}
 
 extension Color {
-    static let razerGreen     = Color(red: 0.267, green: 0.839, blue: 0.173)   // #44D62C signature
-    static let razerGreenDim  = Color(red: 0.267, green: 0.839, blue: 0.173).opacity(0.55)
-    static let razerBG        = Color(red: 0.086, green: 0.098, blue: 0.086)   // charcoal (not pure black)
-    static let razerBGTop     = Color(red: 0.118, green: 0.133, blue: 0.118)   // lifted gradient top
-    static let razerSurface   = Color(red: 0.137, green: 0.153, blue: 0.137)   // panel fill — pops vs bg
-    static let razerSurfaceHi = Color(red: 0.184, green: 0.204, blue: 0.184)   // raised control fill
-    static let razerText      = Color(white: 0.95)
-    static let razerSecondary = Color(red: 0.64, green: 0.69, blue: 0.64)      // bright greenish-grey
+    // signature green — bright on dark, a deeper readable green on light surfaces
+    static let razerGreen     = dyn((0.16, 0.62, 0.09), (0.267, 0.839, 0.173))
+    static let razerBG        = dyn((0.945, 0.955, 0.935), (0.086, 0.098, 0.086))
+    static let razerBGTop     = dyn((0.985, 0.99, 0.975), (0.118, 0.133, 0.118))
+    static let razerSurface   = dyn((1.0, 1.0, 0.995),   (0.137, 0.153, 0.137))
+    static let razerSurfaceHi = dyn((0.90, 0.92, 0.89),  (0.184, 0.204, 0.184))
+    static let razerText      = dyn((0.10, 0.12, 0.10),  (0.95, 0.95, 0.95))
+    static let razerSecondary = dyn((0.36, 0.42, 0.35),  (0.64, 0.69, 0.64))
+    static let razerGreenDim  = Color.razerGreen.opacity(0.55)
     static let razerHairline  = Color.razerGreen.opacity(0.30)
 }
 
@@ -31,18 +43,20 @@ struct ChamferedRectangle: Shape {
     }
 }
 
-/// Full-bleed dark Razer backdrop: green top-glow + faint CRT scanlines.
+/// Dark/light Razer backdrop: green top-glow + faint scanlines (much subtler in light mode).
 struct RazerBackground: View {
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
         ZStack {
             LinearGradient(colors: [.razerBGTop, .razerBG], startPoint: .top, endPoint: .bottom)
-            RadialGradient(colors: [Color.razerGreen.opacity(0.07), .clear],
+            RadialGradient(colors: [Color.razerGreen.opacity(scheme == .dark ? 0.08 : 0.05), .clear],
                            center: .top, startRadius: 0, endRadius: 460)
             Canvas { ctx, size in
+                let op = scheme == .dark ? 0.16 : 0.05
                 var y: CGFloat = 0
                 while y < size.height {
                     ctx.stroke(Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: size.width, y: y)) },
-                               with: .color(.black.opacity(0.16)), lineWidth: 0.5)
+                               with: .color(.black.opacity(op)), lineWidth: 0.5)
                     y += 3
                 }
             }
@@ -52,7 +66,7 @@ struct RazerBackground: View {
     }
 }
 
-/// Razer panel: chamfered dark surface, thin neon hairline, UPPERCASE green caption.
+/// Razer panel: chamfered surface, thin neon hairline, UPPERCASE green caption.
 struct RazerGroupBoxStyle: GroupBoxStyle {
     func makeBody(configuration: Configuration) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -108,10 +122,8 @@ extension View {
 
     func razerPulse(_ active: Bool, color: Color = .razerGreen) -> some View { modifier(RazerPulse(active: active, color: color)) }
 
-    /// Apply the whole Razer look (dark scheme, green accent, panel style) to a root view.
+    /// Apply the Razer look — green accent + panel style. Follows the system Light/Dark/Auto theme.
     func razerChrome() -> some View {
-        self.preferredColorScheme(.dark)
-            .tint(.razerGreen)
-            .groupBoxStyle(RazerGroupBoxStyle())
+        self.tint(.razerGreen).groupBoxStyle(RazerGroupBoxStyle())
     }
 }
