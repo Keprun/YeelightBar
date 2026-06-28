@@ -35,6 +35,12 @@ final class LampController: ObservableObject {
     @Published var connectError: String?
     @Published var screenSyncOn = false
     @Published var screenSyncStatus: String?
+    // Keychron keyboard ambilight (rides the screen effect; samples its own screen zone)
+    @Published var keyboardSyncOn = false
+    @Published var keyboardLink: KeychronKeyboard.Link = .none
+    @Published var keyboardRegion: SyncRegion = .bottom { didSet { if screenSyncOn { pushKeyboardAux() } } }   // live
+    @Published var keyboardDisplay: CGDirectDisplayID = CGMainDisplayID() { didSet { if screenSyncOn { restartSync() } } }   // re-capture
+    @Published var keyboardColor = Color(rgb: 0x000000)
     @Published var musicSyncOn = false
     @Published var musicSyncStatus: String?
     @Published var syncColor = Color(rgb: 0x000000)
@@ -81,6 +87,7 @@ final class LampController: ObservableObject {
     private var controlGen = 0   // bumped on every control action; a stale blink-restore checks it before clobbering
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
+    let keyboard = KeychronKeyboard()
     private let savedIDKey = "selectedDeviceID"
     private let savedIPKey = "selectedDeviceIP"
 
@@ -101,6 +108,9 @@ final class LampController: ObservableObject {
         music.onColor = { [weak self] rgb in self?.syncColor = Color(rgb: rgb) }
         music.sensitivity = musicSensitivity
         music.style = musicStyle
+        sync.onAuxColor = { [weak self] rgb in self?.keyboard.setColor(rgb); self?.keyboardColor = Color(rgb: rgb) }
+        keyboard.onLink = { [weak self] link in self?.keyboardLink = link }
+        keyboard.refresh()
         refreshScreenPermission()
         refreshDisplays()
         // react live to a monitor being plugged in / unplugged / rearranged
@@ -500,21 +510,41 @@ final class LampController: ObservableObject {
 
     func toggleScreenSync() {
         if screenSyncOn { stopScreenSync(); return }   // sync off — ambient stays as a static colour
-        guard selected != nil, connected else {
-            screenSyncStatus = "Сначала подключись к лампе."
-            return
-        }
         let targets = syncTargets()
-        guard !targets.isEmpty else {
+        guard !targets.isEmpty || keyboardSyncOn else {   // need at least a lamp OR the keyboard
             screenSyncStatus = "Назначь зону экрана хотя бы одной лампе."
             return
         }
+        if !targets.isEmpty {
+            guard selected != nil, connected else { screenSyncStatus = "Сначала подключись к лампе."; return }
+            ambientOn = true             // sync turns the backlight on — reflect it in the toggle
+            fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", ["on", "smooth", 200]) } // colour channel on
+        }
         stopMusicSync()              // screen-sync and music-sync are mutually exclusive
-        ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         screenSyncOn = true            // optimistic; reverted by onState on failure
         screenSyncStatus = "Запуск…"
-        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", ["on", "smooth", 200]) } // colour channel on
+        pushKeyboardAux()
+        if keyboardSyncOn { keyboard.beginSession() }
         sync.start(targets: targets)
+    }
+
+    /// Keychron keyboard ambilight — rides the screen effect, sampling its own screen zone.
+    func setKeyboardSync(_ on: Bool) {
+        keyboardSyncOn = on
+        keyboard.beginSession()
+        pushKeyboardAux()
+        if screenSyncOn {
+            if !on && syncTargets().isEmpty { stopScreenSync() }   // keyboard was the only consumer
+            else { restartSync() }                                  // re-capture (add / drop the aux display)
+        } else if on {
+            toggleScreenSync()                                      // start the engine (keyboard-only is allowed)
+        }
+    }
+
+    private func pushKeyboardAux() {
+        sync.setAux(display: keyboardSyncOn ? keyboardDisplay : nil,
+                    region: keyboardRegion,
+                    geom: ZoneGeom(band: 0.45, length: 1.0, center: 0.5))
     }
 
     func stopScreenSync() {
@@ -609,11 +639,12 @@ final class LampController: ObservableObject {
     private func restartSync() {
         if screenSyncOn {
             let t = syncTargets()
-            if t.isEmpty {
+            if t.isEmpty && !keyboardSyncOn {
                 stopScreenSync()
                 screenSyncStatus = "Назначь зону экрана хотя бы одной лампе."
             } else {
-                ensureColourChannelsOn()
+                if !t.isEmpty { ensureColourChannelsOn() }
+                pushKeyboardAux()
                 sync.stop(); sync.start(targets: t)
             }
         }

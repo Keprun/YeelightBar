@@ -118,3 +118,10 @@
 "Авто" = "Auto";
 "Светлая" = "Hell";
 "Тёмная" = "Dunkel";
+/* Keyboard */
+"Клавиатура" = "Tastatur";
+"Откуда цвет" = "Farbe von";
+"По 2.4ГГц подсветка не управляется — подключи кабель." = "Über 2,4 GHz lässt sich die Beleuchtung nicht steuern — schließe das Kabel an.";
+"Подключена по USB" = "Über USB verbunden";
+"Нужен USB-кабель" = "USB-Kabel nötig";
+"Не подключена" = "Nicht verbunden";

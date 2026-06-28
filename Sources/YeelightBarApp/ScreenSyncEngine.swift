@@ -93,6 +93,13 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
     var onRegionColors: (([CGDirectDisplayID: [SyncRegion: Int]]) -> Void)?
     var onLuma: ((Double) -> Void)?
+    /// Auxiliary single-region tap (the Keychron keyboard): sampled even when no lamp uses its
+    /// (display, region), so the keyboard can ambient off any screen zone. Set before start().
+    var auxDisplay: CGDirectDisplayID?
+    var auxRegion: SyncRegion = .bottom
+    var auxGeom = ZoneGeom()
+    var onAuxColor: ((Int) -> Void)?
+    private var auxSmoothed: (r: Double, g: Double, b: Double)?
     /// Live per-(display, region) capture geometry. Seeded from the targets at start and updatable
     /// without restarting the capture, so the geometry sliders respond instantly. Touched only on `queue`.
     private var geoms: [CGDirectDisplayID: [SyncRegion: ZoneGeom]] = [:]
@@ -115,12 +122,13 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             let gen = self.generation
             self.frameCount = 0
             self.smoothed = [:]
+            self.auxSmoothed = nil
             let o = SyncOutput(targets)
             self.out = o
             self.geoms = Self.geomMap(targets)
             o.openStream()
             self.startKeepAlive()
-            self.beginCapture(gen: gen, displays: o.displayIDs)
+            self.beginCapture(gen: gen, displays: o.displayIDs.union(self.auxDisplay.map { [$0] } ?? []))
         }
     }
 
@@ -130,6 +138,11 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
 
     /// Update capture geometry live (slider drag) — no stream restart, no flicker.
     func setGeoms(_ m: [CGDirectDisplayID: [SyncRegion: ZoneGeom]]) { queue.async { self.geoms = m } }
+
+    /// Set the keyboard aux tap. Region/geom apply live; a display change needs a restart to re-capture.
+    func setAux(display: CGDirectDisplayID?, region: SyncRegion, geom: ZoneGeom) {
+        queue.async { self.auxDisplay = display; self.auxRegion = region; self.auxGeom = geom }
+    }
 
     /// Collapse targets to one geometry per (display, region).
     private static func geomMap(_ ts: [SyncTarget]) -> [CGDirectDisplayID: [SyncRegion: ZoneGeom]] {
@@ -250,6 +263,21 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
         // One physical stream can serve several requested display ids (e.g. a lamp pinned to an
         // unplugged screen that fell back to this one). Same pixels → route to each.
         for did in dids {
+            // keyboard aux tap — computed even on a display no lamp samples
+            if did == auxDisplay {
+                let ag = auxGeom
+                let (rr, gg, bb) = Self.regionAverage(ptr, w, h, bpr, region: auxRegion, band: ag.band, length: ag.length, center: ag.center)
+                let avg = (rr + gg + bb) / 3, boost = saturation
+                let r = min(255, max(0, avg + (rr - avg) * boost))
+                let gr = min(255, max(0, avg + (gg - avg) * boost))
+                let bl = min(255, max(0, avg + (bb - avg) * boost))
+                var s = auxSmoothed ?? (r, gr, bl)
+                s.r += (r - s.r) * k; s.g += (gr - s.g) * k; s.b += (bl - s.b) * k
+                auxSmoothed = s
+                if frameCount % 2 == 0 {
+                    DispatchQueue.main.async { self.onAuxColor?((Int(s.r) << 16) | (Int(s.g) << 8) | Int(s.b)) }
+                }
+            }
             let wanted = out.regions(on: did)
             guard !wanted.isEmpty else { continue }
             var sm = smoothed[did] ?? [:]

@@ -223,6 +223,56 @@ struct FullView: View {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
     }
 
+    private var keyboardCard: some View {
+        GroupBox(label: Label("Клавиатура", systemImage: "keyboard")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(lamp.keyboardLink == .cable ? Color.razerGreen : (lamp.keyboardLink == .dongle ? Color.orange : Color.gray))
+                        .frame(width: 8, height: 8)
+                    Text(verbatim: "Keychron V1 Max").font(.callout)
+                    Text(keyboardStatus).font(.caption2).foregroundStyle(Color.razerSecondary)
+                    Spacer()
+                    Toggle("", isOn: Binding(get: { lamp.keyboardSyncOn }, set: { lamp.setKeyboardSync($0) }))
+                        .toggleStyle(.switch).labelsHidden()
+                        .disabled(lamp.keyboardLink != .cable)
+                }
+                if lamp.keyboardLink == .dongle {
+                    Text("По 2.4ГГц подсветка не управляется — подключи кабель.")
+                        .font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                }
+                if lamp.keyboardSyncOn {
+                    HStack(spacing: 10) {
+                        Text("Откуда цвет").font(.caption).foregroundStyle(Color.razerSecondary)
+                        Menu(zoneLabel(lamp.keyboardRegion)) {
+                            Button("Верх") { lamp.keyboardRegion = .top }
+                            Button("Низ") { lamp.keyboardRegion = .bottom }
+                            Button("Лево") { lamp.keyboardRegion = .left }
+                            Button("Право") { lamp.keyboardRegion = .right }
+                            Button("Весь экран") { lamp.keyboardRegion = .full }
+                        }.fixedSize()
+                        if lamp.displays.count > 1 {
+                            Menu(displayShort(lamp.keyboardDisplay)) {
+                                ForEach(lamp.displays) { d in Button(d.label) { lamp.keyboardDisplay = d.id } }
+                            }.fixedSize()
+                        }
+                        Spacer()
+                        RoundedRectangle(cornerRadius: 5).fill(lamp.keyboardColor).frame(width: 30, height: 18)
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.razerHairline, lineWidth: 1))
+                    }
+                }
+            }.padding(10)
+        }
+    }
+
+    private var keyboardStatus: String {
+        switch lamp.keyboardLink {
+        case .cable:  return NSLocalizedString("Подключена по USB", comment: "")
+        case .dongle: return NSLocalizedString("Нужен USB-кабель", comment: "")
+        case .none:   return NSLocalizedString("Не подключена", comment: "")
+        }
+    }
+
     private var lightSection: some View {
         VStack(alignment: .leading, spacing: 22) {
             controlSection
@@ -369,6 +419,7 @@ struct FullView: View {
                         slider("Насыщенность", $lamp.syncSaturation, 1.0...2.0, { String(format: "%.1f×", $0) })
                     }.padding(10)
                 }
+                if lamp.keyboardLink != .none { keyboardCard }
             }
             if lamp.syncMode == .music {
                 GroupBox("Музыка (системный звук)") {
