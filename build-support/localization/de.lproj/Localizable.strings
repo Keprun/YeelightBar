@@ -127,3 +127,17 @@
 "Не подключена" = "Nicht verbunden";
 "Пульс под музыку" = "Pulst zur Musik";
 "Запускать при входе в систему" = "Beim Anmelden starten";
+/* batch: scenes/idle/sharpness/eyedropper */
+"Мгновенно на резких сменах сцен" = "Bei Szenenwechseln sofort umschalten";
+"Игнорировать чёрные полосы (letterbox)" = "Schwarze Balken ignorieren (Letterbox)";
+"Взять цвет с экрана" = "Farbe vom Bildschirm wählen";
+"Мои сцены" = "Meine Szenen";
+"Сохранить текущий цвет" = "Aktuelle Farbe speichern";
+"Нажми «Сохранить текущий цвет», чтобы добавить свою сцену." = "Tippe auf „Aktuelle Farbe speichern“, um eine Szene hinzuzufügen.";
+"Удалить" = "Löschen";
+"Новая сцена" = "Neue Szene";
+"Название" = "Name";
+"Отмена" = "Abbrechen";
+"Сохранить" = "Speichern";
+"Затемнять при простое" = "Bei Inaktivität dimmen";
+"Через %lld мин" = "Nach %lld Min.";

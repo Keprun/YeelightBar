@@ -127,3 +127,17 @@
 "Не подключена" = "Not connected";
 "Пульс под музыку" = "Pulses to the music";
 "Запускать при входе в систему" = "Launch at login";
+/* batch: scenes/idle/sharpness/eyedropper */
+"Мгновенно на резких сменах сцен" = "Snap instantly on scene cuts";
+"Игнорировать чёрные полосы (letterbox)" = "Ignore black bars (letterbox)";
+"Взять цвет с экрана" = "Pick a colour from the screen";
+"Мои сцены" = "My scenes";
+"Сохранить текущий цвет" = "Save current colour";
+"Нажми «Сохранить текущий цвет», чтобы добавить свою сцену." = "Tap “Save current colour” to add a scene.";
+"Удалить" = "Delete";
+"Новая сцена" = "New scene";
+"Название" = "Name";
+"Отмена" = "Cancel";
+"Сохранить" = "Save";
+"Затемнять при простое" = "Dim when idle";
+"Через %lld мин" = "After %lld min";

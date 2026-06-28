@@ -19,6 +19,13 @@ struct DisplayInfo: Identifiable, Hashable {
     }
 }
 
+/// A user-saved ambient colour scene (the RGB encodes its brightness). Persisted as JSON.
+struct LampScene: Codable, Identifiable, Hashable {
+    var id = UUID()
+    var name: String
+    var rgb: Int
+}
+
 /// Bridges SwiftUI to YeelightKit: device finding + live control.
 @MainActor
 final class LampController: ObservableObject {
@@ -65,6 +72,11 @@ final class LampController: ObservableObject {
     @Published var brightnessFollow = false
     @Published var syncSmoothing: Double = 0.35 { didSet { sync.setSmoothing(syncSmoothing) } }
     @Published var syncSaturation: Double = 1.25 { didSet { sync.setSaturation(syncSaturation) } }
+    @Published var snapCuts = false { didSet { sync.setSnapCuts(snapCuts) } }          // snap on scene cuts
+    @Published var skipBlackBars = false { didSet { sync.setSkipBlackBars(skipBlackBars) } }   // ignore letterbox
+    @Published var customScenes: [LampScene] = LampController.loadScenes() { didSet { LampController.saveScenes(customScenes) } }
+    @Published var idleDim = false { didSet { idleDim ? startIdleTimer() : stopIdleTimer() } }   // dim lamps when away
+    @Published var idleMinutes: Double = 5
     @Published var musicSensitivity: Double = 4.0 { didSet { music.setSensitivity(musicSensitivity) } }
     @Published var musicStyle: MusicStyle = .beat { didSet { music.setStyle(musicStyle) } }
     @Published var syncRegions: [String: SyncRegion] = [:] { didSet { if !suppressRegionRestart, screenSyncOn || musicSyncOn { restartSync() } } }
@@ -87,6 +99,9 @@ final class LampController: ObservableObject {
     private let io = DispatchQueue(label: "yeelightbar.control")
     private var controlGen = 0   // bumped on every control action; a stale blink-restore checks it before clobbering
     private var lastRegionSnap: [CGDirectDisplayID: [SyncRegion: Int]] = [:]   // de-dup screen-sync colour pushes
+    private var idleTimer: Timer?
+    private var idleDimmed = false
+    private var preIdleBright = 50.0
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
     let keyboard = KeychronKeyboard()
@@ -108,6 +123,8 @@ final class LampController: ObservableObject {
         sync.onLuma = { [weak self] luma in self?.applyLuma(luma) }
         sync.setSmoothing(syncSmoothing)
         sync.setSaturation(syncSaturation)
+        sync.setSnapCuts(snapCuts)
+        sync.setSkipBlackBars(skipBlackBars)
         music.onState = { [weak self] running, err in self?.musicSyncOn = running; self?.musicSyncStatus = err }
         music.onColor = { [weak self] rgb in
             guard let self else { return }
@@ -506,6 +523,56 @@ final class LampController: ObservableObject {
     }
     func pushBrightness() { let v = max(1, min(100, Int(brightness))); fanOut { dev, _ in self.send(dev, "set_bright", [v, "smooth", 300]) } }
     func pushColorTemp() { let k = max(1700, min(6500, Int(colorTempK))); fanOut { dev, _ in self.send(dev, "set_ct_abx", [k, "smooth", 300]) } }
+
+    // MARK: - Custom scenes (user-saved ambient colours, persisted)
+    func addScene(_ name: String) {
+        let n = name.trimmingCharacters(in: .whitespaces); guard !n.isEmpty else { return }
+        customScenes.append(LampScene(name: n, rgb: ambientColor.rgbInt))
+    }
+    func removeScene(_ s: LampScene) { customScenes.removeAll { $0.id == s.id } }
+    func applyScene(_ s: LampScene) { setAmbient(Color(rgb: s.rgb)) }
+    static func loadScenes() -> [LampScene] {
+        guard let d = UserDefaults.standard.data(forKey: "customScenes"),
+              let s = try? JSONDecoder().decode([LampScene].self, from: d) else { return [] }
+        return s
+    }
+    static func saveScenes(_ s: [LampScene]) {
+        if let d = try? JSONEncoder().encode(s) { UserDefaults.standard.set(d, forKey: "customScenes") }
+    }
+
+    // MARK: - Idle dimming (dim the lamps when the user is away, restore on activity)
+    private func startIdleTimer() {
+        idleTimer?.invalidate()
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in self?.checkIdle() }
+    }
+    private func stopIdleTimer() { idleTimer?.invalidate(); idleTimer = nil; if idleDimmed { restoreFromIdle() } }
+    private func checkIdle() {
+        let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
+        if idle >= idleMinutes * 60 {
+            if !idleDimmed, connected { enterIdleDim() }
+        } else if idleDimmed {
+            restoreFromIdle()
+        }
+    }
+    private func enterIdleDim() {
+        idleDimmed = true
+        preIdleBright = brightness
+        if screenSyncOn { stopScreenSync() }      // a live effect would fight the dim
+        if musicSyncOn { stopMusicSync() }
+        fanOut { dev, isBar in
+            self.send(dev, "set_bright", [8, "smooth", 800])
+            if isBar { self.send(dev, "bg_set_bright", [8, "smooth", 800]) }
+        }
+    }
+    private func restoreFromIdle() {
+        idleDimmed = false
+        let v = max(1, min(100, Int(preIdleBright)))
+        brightness = preIdleBright
+        fanOut { dev, isBar in
+            self.send(dev, "set_bright", [v, "smooth", 800])
+            if isBar { self.send(dev, "bg_set_bright", [v, "smooth", 800]) }
+        }
+    }
     func pushAmbient() {
         let rgb = ambientColor.rgbInt
         fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_rgb" : "set_rgb", [rgb & 0xFFFFFF, "smooth", 300]) }

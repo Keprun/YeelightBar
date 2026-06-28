@@ -34,6 +34,8 @@ struct FullView: View {
     @State private var langChoice = AppLanguage.current
     @State private var langChanged = false
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
+    @State private var newSceneName = ""
+    @State private var showSceneSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -204,10 +206,17 @@ struct FullView: View {
                 }
             }
             GroupBox("Основные") {
-                Toggle("Запускать при входе в систему", isOn: Binding(
-                    get: { launchAtLogin },
-                    set: { v in LaunchAtLogin.isEnabled = v; launchAtLogin = LaunchAtLogin.isEnabled }
-                )).toggleStyle(.switch)
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle("Запускать при входе в систему", isOn: Binding(
+                        get: { launchAtLogin },
+                        set: { v in LaunchAtLogin.isEnabled = v; launchAtLogin = LaunchAtLogin.isEnabled }
+                    )).toggleStyle(.switch)
+                    Toggle("Затемнять при простое", isOn: $lamp.idleDim).toggleStyle(.switch)
+                    if lamp.idleDim {
+                        Stepper("Через \(Int(lamp.idleMinutes)) мин", value: $lamp.idleMinutes, in: 1...60)
+                            .font(.callout).foregroundStyle(Color.razerSecondary)
+                    }
+                }
             }
             GroupBox("О приложении") {
                 VStack(alignment: .leading, spacing: 10) {
@@ -286,6 +295,13 @@ struct FullView: View {
         }
     }
 
+    /// System eyedropper → set the ambient channel to the picked screen colour.
+    private func pickScreenColor() {
+        NSColorSampler().show { picked in
+            if let c = picked { lamp.setAmbient(Color(nsColor: c)) }
+        }
+    }
+
     private var lightSection: some View {
         VStack(alignment: .leading, spacing: 22) {
             controlSection
@@ -321,6 +337,8 @@ struct FullView: View {
                     HStack {
                         Text("Текущий цвет").font(.callout).foregroundStyle(Color.razerSecondary)
                         Spacer()
+                        Button { pickScreenColor() } label: { Image(systemName: "eyedropper") }
+                            .buttonStyle(.borderless).help("Взять цвет с экрана")
                         RoundedRectangle(cornerRadius: 6).fill(lamp.ambientColor).frame(width: 40, height: 40)
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary.opacity(0.3)))
                     }
@@ -429,6 +447,8 @@ struct FullView: View {
                 GroupBox("Настройка") {
                     VStack(alignment: .leading, spacing: 16) {
                         Toggle("Яркость следует за яркостью сцены", isOn: $lamp.brightnessFollow)
+                        Toggle("Мгновенно на резких сменах сцен", isOn: $lamp.snapCuts)
+                        Toggle("Игнорировать чёрные полосы (letterbox)", isOn: $lamp.skipBlackBars)
                         slider("Плавность", $lamp.syncSmoothing, 0.1...0.8, { "\(Int($0 * 100))%" })
                         slider("Насыщенность", $lamp.syncSaturation, 1.0...2.0, { String(format: "%.1f×", $0) })
                     }.padding(10)
@@ -451,7 +471,7 @@ struct FullView: View {
     }
 
     private var scenesSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             Text("Готовые пресеты белого света").foregroundStyle(Color.razerSecondary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
                 sceneBtn("Reading", "book", 4000, 100)
@@ -459,6 +479,48 @@ struct FullView: View {
                 sceneBtn("Focus", "target", 5000, 100)
                 sceneBtn("Movie", "film", 2700, 15)
             }
+            Divider().opacity(0.35)
+            HStack {
+                Text("Мои сцены").foregroundStyle(Color.razerSecondary)
+                Spacer()
+                Button { newSceneName = "Цвет \(lamp.customScenes.count + 1)"; showSceneSheet = true } label: {
+                    Label("Сохранить текущий цвет", systemImage: "plus")
+                }.buttonStyle(.bordered)
+            }
+            if lamp.customScenes.isEmpty {
+                Text("Нажми «Сохранить текущий цвет», чтобы добавить свою сцену.")
+                    .font(.caption).foregroundStyle(Color.razerSecondary)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+                    ForEach(lamp.customScenes) { s in
+                        Button { lamp.applyScene(s) } label: {
+                            VStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 8).fill(Color(rgb: s.rgb)).frame(height: 42)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.razerHairline))
+                                Text(s.name).font(.caption2).lineLimit(1)
+                            }
+                        }.buttonStyle(.plain)
+                        .contextMenu { Button(role: .destructive) { lamp.removeScene(s) } label: { Label("Удалить", systemImage: "trash") } }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showSceneSheet) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Новая сцена").font(.headline)
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 6).fill(lamp.ambientColor).frame(width: 36, height: 36)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.razerHairline))
+                    TextField("Название", text: $newSceneName).textFieldStyle(.roundedBorder)
+                }
+                HStack {
+                    Spacer()
+                    Button("Отмена") { showSceneSheet = false }
+                    Button("Сохранить") { lamp.addScene(newSceneName); showSceneSheet = false }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(newSceneName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }.padding(20).frame(width: 320)
         }
     }
 

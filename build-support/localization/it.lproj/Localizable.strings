@@ -128,3 +128,17 @@ nella scheda «Dispositivi»";
 "Не подключена" = "Non collegata";
 "Пульс под музыку" = "Pulsa a ritmo di musica";
 "Запускать при входе в систему" = "Avvia all'accesso";
+/* batch: scenes/idle/sharpness/eyedropper */
+"Мгновенно на резких сменах сцен" = "Cambio istantaneo agli stacchi di scena";
+"Игнорировать чёрные полосы (letterbox)" = "Ignora le bande nere (letterbox)";
+"Взять цвет с экрана" = "Preleva un colore dallo schermo";
+"Мои сцены" = "Le mie scene";
+"Сохранить текущий цвет" = "Salva il colore attuale";
+"Нажми «Сохранить текущий цвет», чтобы добавить свою сцену." = "Tocca «Salva il colore attuale» per aggiungere una scena.";
+"Удалить" = "Elimina";
+"Новая сцена" = "Nuova scena";
+"Название" = "Nome";
+"Отмена" = "Annulla";
+"Сохранить" = "Salva";
+"Затемнять при простое" = "Attenua quando inattivo";
+"Через %lld мин" = "Dopo %lld min";

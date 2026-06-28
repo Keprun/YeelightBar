@@ -103,10 +103,21 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
     /// Live per-(display, region) capture geometry. Seeded from the targets at start and updatable
     /// without restarting the capture, so the geometry sliders respond instantly. Touched only on `queue`.
     private var geoms: [CGDirectDisplayID: [SyncRegion: ZoneGeom]] = [:]
-    private var smoothing: Double = 0.35      // read on `queue`; mutate only via setSmoothing
+    private var smoothing: Double = 0.35      // read on `queue`; mutate only via the setters
     private var saturation: Double = 1.25
+    private var snapCuts = false              // snap colour instantly on a big scene cut
+    private var skipBlackBars = false         // ignore near-black letterbox/pillarbox pixels when averaging
     func setSmoothing(_ v: Double) { queue.async { self.smoothing = v } }
     func setSaturation(_ v: Double) { queue.async { self.saturation = v } }
+    func setSnapCuts(_ v: Bool) { queue.async { self.snapCuts = v } }
+    func setSkipBlackBars(_ v: Bool) { queue.async { self.skipBlackBars = v } }
+
+    /// EMA blend toward a new colour; on a large delta (a scene cut), `snap` jumps most of the way at once.
+    private static func blend(_ s: inout (r: Double, g: Double, b: Double), _ r: Double, _ g: Double, _ b: Double, k: Double, snap: Bool) {
+        var kk = k
+        if snap, abs(r - s.r) + abs(g - s.g) + abs(b - s.b) > 140 { kk = max(kk, 0.85) }
+        s.r += (r - s.r) * kk; s.g += (g - s.g) * kk; s.b += (b - s.b) * kk
+    }
 
     private var out: SyncOutput?
     private var streamsByDisplay: [CGDirectDisplayID: SCStream] = [:]              // keyed by RESOLVED physical display
@@ -268,13 +279,13 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             // keyboard aux tap — computed even on a display no lamp samples
             if did == auxDisplay {
                 let ag = auxGeom
-                let (rr, gg, bb) = Self.regionAverage(ptr, w, h, bpr, region: auxRegion, band: ag.band, length: ag.length, center: ag.center)
+                let (rr, gg, bb) = Self.regionAverage(ptr, w, h, bpr, region: auxRegion, band: ag.band, length: ag.length, center: ag.center, skipBlack: skipBlackBars)
                 let avg = (rr + gg + bb) / 3, boost = saturation
                 let r = min(255, max(0, avg + (rr - avg) * boost))
                 let gr = min(255, max(0, avg + (gg - avg) * boost))
                 let bl = min(255, max(0, avg + (bb - avg) * boost))
                 var s = auxSmoothed ?? (r, gr, bl)
-                s.r += (r - s.r) * k; s.g += (gr - s.g) * k; s.b += (bl - s.b) * k
+                Self.blend(&s, r, gr, bl, k: k, snap: snapCuts)
                 auxSmoothed = s
                 if frameCount % 2 == 0 {
                     DispatchQueue.main.async { self.onAuxColor?((Int(s.r) << 16) | (Int(s.g) << 8) | Int(s.b)) }
@@ -285,13 +296,13 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             var sm = smoothed[did] ?? [:]
             for region in wanted {
                 let geo = geoms[did]?[region] ?? ZoneGeom()
-                let (rawR, rawG, rawB) = Self.regionAverage(ptr, w, h, bpr, region: region, band: geo.band, length: geo.length, center: geo.center)
+                let (rawR, rawG, rawB) = Self.regionAverage(ptr, w, h, bpr, region: region, band: geo.band, length: geo.length, center: geo.center, skipBlack: skipBlackBars)
                 let avg = (rawR + rawG + rawB) / 3, boost = saturation
                 let r = min(255, max(0, avg + (rawR - avg) * boost))
                 let g = min(255, max(0, avg + (rawG - avg) * boost))
                 let b = min(255, max(0, avg + (rawB - avg) * boost))
                 var s = sm[region] ?? (r, g, b)
-                s.r += (r - s.r) * k; s.g += (g - s.g) * k; s.b += (b - s.b) * k
+                Self.blend(&s, r, g, b, k: k, snap: snapCuts)
                 sm[region] = s
                 out.streamRegion(did, region, rgb: (Int(s.r) << 16) | (Int(s.g) << 8) | Int(s.b))
                 // addressable strips: slice this region along its length and stream per-segment colours
@@ -342,7 +353,8 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
 
     private static func regionAverage(_ ptr: UnsafePointer<UInt8>, _ w: Int, _ h: Int, _ bpr: Int,
                                       region: SyncRegion, band: Double,
-                                      length: Double = 1.0, center: Double = 0.5) -> (Double, Double, Double) {
+                                      length: Double = 1.0, center: Double = 0.5,
+                                      skipBlack: Bool = false) -> (Double, Double, Double) {
         let (x0, x1, y0, y1) = zoneBounds(w, h, region: region, band: band, length: length, center: center)
         var rs = 0.0, gs = 0.0, bs = 0.0, n = 0.0
         var y = y0
@@ -351,8 +363,9 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
             var x = x0
             while x < x1 {
                 let p = row + x * 4
-                bs += Double(ptr[p]); gs += Double(ptr[p + 1]); rs += Double(ptr[p + 2]) // BGRA
-                n += 1; x += 1
+                let b = Double(ptr[p]), g = Double(ptr[p + 1]), r = Double(ptr[p + 2]) // BGRA
+                if !skipBlack || r + g + b > 24 { bs += b; gs += g; rs += r; n += 1 }   // drop near-black letterbox pixels
+                x += 1
             }
             y += 1
         }
