@@ -671,9 +671,11 @@ private struct WindowConfigurator: NSViewRepresentable {
             w.titleVisibility = .hidden
             w.isMovableByWindowBackground = true
             w.styleMask.insert(.fullSizeContentView)
-            w.backgroundColor = NSColor(Color.razerBG)
         }
         return v
     }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Re-apply the backing colour on every SwiftUI update so a live theme switch re-tints the window.
+        DispatchQueue.main.async { nsView.window?.backgroundColor = NSColor(Color.razerBG) }
+    }
 }

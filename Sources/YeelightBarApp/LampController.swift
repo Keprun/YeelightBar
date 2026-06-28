@@ -78,6 +78,7 @@ final class LampController: ObservableObject {
     /// All TCP control/read traffic to the connected lamp is serialized here — the bar drops a
     /// command if two connections hit it at once (e.g. set_power + bg_set_power racing).
     private let io = DispatchQueue(label: "yeelightbar.control")
+    private var controlGen = 0   // bumped on every control action; a stale blink-restore checks it before clobbering
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
     private let savedIDKey = "selectedDeviceID"
@@ -173,11 +174,17 @@ final class LampController: ObservableObject {
             ? "400,2,4000,100,400,2,4000,1,400,2,4000,100,400,2,4000,1"               // bar: warm-white CT blink
             : "400,1,16711680,100,400,1,255,100,400,1,16711680,100,400,1,255,100"     // strip/bulb: red/blue RGB blink
         let dev = YeelightDevice(ip: d.ip, tcpPort: d.port)
-        Task.detached {
+        controlGen += 1
+        let myGen = controlGen
+        // Serialize on `io` so the blink never races group power / state reads on the bar.
+        io.async { [weak self] in
             let wasOn = ((try? dev.properties(["power"]))?.first == "on")
             _ = try? dev.control("set_scene", ["cf", 8, 0, flow])
-            try? await Task.sleep(nanoseconds: 3_600_000_000)   // let the ~3.2 s flow finish
-            _ = try? dev.power(wasOn)                            // restore the prior power state
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 3_600_000_000)   // let the ~3.2 s flow finish
+                guard let self, self.controlGen == myGen else { return }  // user changed power meanwhile → keep it
+                self.io.async { _ = try? dev.power(wasOn) }              // restore the prior power state
+            }
         }
     }
 
@@ -413,6 +420,7 @@ final class LampController: ObservableObject {
     private func fanOut(_ op: @escaping (YeelightDevice, Bool) -> Void) {
         let targets = controlTargets()
         guard !targets.isEmpty else { return }
+        controlGen += 1                       // any control supersedes a pending blink-restore
         io.async { for t in targets { op(t.dev, t.isBar) } }
     }
     /// Fire-and-forget control with a short reply wait — the lamp acts whether or not we read it.
