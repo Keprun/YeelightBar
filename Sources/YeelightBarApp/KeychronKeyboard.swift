@@ -39,7 +39,7 @@ final class KeychronKeyboard {
     private let io = DispatchQueue(label: "yeelightbar.keychron")
     private var manager: IOHIDManager?
     private var device: IOHIDDevice?
-    private var effectArmed = false   // re-assert SOLID_COLOR once per session
+    private var lastArm = Date.distantPast    // periodically re-assert the solid effect
     private var lastSend = Date.distantPast
 
     init() { io.async { self.setupManager() } }
@@ -55,7 +55,7 @@ final class KeychronKeyboard {
         let cb: IOHIDDeviceCallback = { context, _, _, _ in
             guard let context else { return }
             let me = Unmanaged<KeychronKeyboard>.fromOpaque(context).takeUnretainedValue()
-            me.io.async { me.device = nil; me.effectArmed = false; me.refreshLink() }
+            me.io.async { me.device = nil; me.lastArm = .distantPast; me.refreshLink() }
         }
         IOHIDManagerRegisterDeviceMatchingCallback(mgr, cb, ctx)
         IOHIDManagerRegisterDeviceRemovalCallback(mgr, cb, ctx)
@@ -84,7 +84,7 @@ final class KeychronKeyboard {
             guard IOHIDDeviceOpen(kbd, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess else {
                 setLink(.none); return false   // present but couldn't open (busy) — not usable
             }
-            device = kbd; effectArmed = false
+            device = kbd; lastArm = .distantPast
             let name = product(kbd); model = name.isEmpty ? "Keychron" : name
             setLink(.cable); return true
         }
@@ -109,11 +109,11 @@ final class KeychronKeyboard {
         let rc = buf.withUnsafeBufferPointer {
             IOHIDDeviceSetReport(d, kIOHIDReportTypeOutput, 0, $0.baseAddress!, reportLen)
         }
-        if rc != kIOReturnSuccess { device = nil; effectArmed = false }   // drop & reopen next frame; removal callback handles link
+        if rc != kIOReturnSuccess { device = nil; lastArm = .distantPast }   // drop & reopen next frame; removal callback handles link
     }
 
     /// Re-arm SOLID_COLOR on the next colour (call when an ambilight session starts).
-    func beginSession() { io.async { self.effectArmed = false } }
+    func beginSession() { io.async { self.lastArm = .distantPast } }
 
     /// Drive the whole matrix to this 0xRRGGBB colour. No-op unless connected by cable.
     func setColor(_ rgb: Int) {
@@ -123,10 +123,10 @@ final class KeychronKeyboard {
             guard self.ensureOpen(), let d = self.device, self.link == .cable else { return }
             self.lastSend = now
             let (h, s, v) = Self.rgbToHSV(rgb)
-            if !self.effectArmed {
+            if now.timeIntervalSince(self.lastArm) > 2 {   // (re)assert solid every ~2s so a stray RGB key can't strand an animation
                 self.send(d, [V.setValue, V.rgbMatrix, V.effect, V.solid])   // per-key matrix → solid
                 self.send(d, [V.setValue, V.rgbLight, V.effect, V.solid])    // underglow → static
-                self.effectArmed = true
+                self.lastArm = now
             }
             // drive both custom channels; the one the firmware lacks is a harmless no-op (id_unhandled)
             self.send(d, [V.setValue, V.rgbMatrix, V.color, h, s]); self.send(d, [V.setValue, V.rgbMatrix, V.brightness, v])
