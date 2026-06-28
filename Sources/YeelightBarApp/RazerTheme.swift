@@ -198,6 +198,71 @@ struct RazerPulse: ViewModifier {
     }
 }
 
+/// Animated "⚡ YEELIGHT BAR" wordmark: the bolt flickers like lightning (a sharp double-flash with a
+/// white-hot peak + glow burst), and a sheen sweeps across the letters. One TimelineView clock drives
+/// it all, so it only animates while the window is actually on screen.
+struct AnimatedWordmark: View {
+    var active: Bool                 // connected → full strikes; offline → a calm dim glow
+    var boltSize: CGFloat = 12
+    var textSize: CGFloat = 13
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let s = Self.strike(t, active: active)          // 0 = rest, 1 = peak of a lightning flash
+            HStack(spacing: 8) {
+                bolt(s)
+                wordmark.overlay { sheen(t).mask(wordmark) } // moving highlight, clipped to the glyphs
+            }
+        }
+    }
+
+    /// The static logotype — reused as both the visible text and the sheen mask.
+    private var wordmark: some View {
+        HStack(spacing: 8) {
+            Text("YEELIGHT").foregroundStyle(Color.razerText)
+            Text("BAR").foregroundStyle(Color.razerGreen)
+        }
+        .font(.system(size: textSize, weight: .heavy)).tracking(2.5)
+    }
+
+    private func bolt(_ s: Double) -> some View {
+        ZStack {
+            Image(systemName: "bolt.fill").foregroundStyle(Color.razerGreen)
+            Image(systemName: "bolt.fill").foregroundStyle(.white).opacity(s)   // white-hot at the flash
+        }
+        .font(.system(size: boltSize, weight: .black))
+        .scaleEffect(1 + 0.16 * s)
+        .shadow(color: Color.razerGreen.opacity(0.25 + 0.70 * s), radius: 3 + 12 * s)
+    }
+
+    private func sheen(_ t: Double) -> some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let period = 3.4
+            let p = t.truncatingRemainder(dividingBy: period) / period          // 0..1 sweep cycle
+            LinearGradient(colors: [.clear, .white.opacity(active ? 0.85 : 0.30), .clear],
+                           startPoint: .leading, endPoint: .trailing)
+                .frame(width: w * 0.4)
+                .offset(x: -w * 0.5 + p * (w * 1.5))                             // travel off-left → off-right
+                .blendMode(.plusLighter)
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// Lightning intensity at time `t`: a sharp double-flash near the top of each cycle, a gentle
+    /// shimmer in between. Offline → just a slow dim breath, no strikes.
+    private static func strike(_ t: Double, active: Bool) -> Double {
+        guard active else { return 0.10 + 0.10 * (0.5 + 0.5 * sin(t * 1.4)) }
+        let ph = t.truncatingRemainder(dividingBy: 3.2)
+        if ph < 0.06 { return 1.0 }
+        if ph < 0.12 { return 0.45 }
+        if ph < 0.18 { return 0.92 }                                            // second flicker
+        if ph < 0.26 { return 0.30 }
+        return 0.16 + 0.10 * (0.5 + 0.5 * sin(t * 3))                           // resting shimmer
+    }
+}
+
 extension View {
     /// A section / hero heading in the Razer style: heavy, uppercase, tracked.
     func razerHeading(_ size: CGFloat = 13) -> some View {

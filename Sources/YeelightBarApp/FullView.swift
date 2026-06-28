@@ -78,10 +78,7 @@ struct FullView: View {
     private var titleBar: some View {
         HStack(spacing: 8) {
             Spacer().frame(width: 70)                       // keep clear of the traffic-light buttons
-            Image(systemName: "bolt.fill").font(.system(size: 12))
-                .foregroundStyle(Color.razerGreen).razerPulse(lamp.connected)
-            Text("YEELIGHT").font(.system(size: 13, weight: .heavy)).tracking(2.5).foregroundStyle(Color.razerText)
-            Text("BAR").font(.system(size: 13, weight: .heavy)).tracking(2.5).foregroundStyle(Color.razerGreen)
+            AnimatedWordmark(active: lamp.connected)
             Spacer()
             Button { section = .settings } label: {
                 Image(systemName: "gearshape.fill").font(.system(size: 13))
