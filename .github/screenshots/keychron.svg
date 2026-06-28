@@ -1,0 +1,61 @@
+<svg width="100%" viewBox="0 0 900 600" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>YeelightBar — Keychron keyboard ambilight</title>
+<desc>Effects screen with a Keychron keyboard card: connection status, sync toggle, screen-zone picker, and the keyboard glowing the colour of the screen's bottom edge.</desc>
+<defs>
+<linearGradient id="winK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171B17"/><stop offset="1" stop-color="#121512"/></linearGradient>
+<linearGradient id="scene" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2a6a"/><stop offset="0.6" stop-color="#1d4d6e"/><stop offset="1" stop-color="#00D0E0"/></linearGradient>
+</defs>
+<rect x="1" y="1" width="898" height="598" rx="14" fill="url(#winK)" stroke="#44D62C" stroke-opacity="0.22"/>
+<circle cx="24" cy="22" r="6" fill="#FF5F57"/><circle cx="44" cy="22" r="6" fill="#FEBC2E"/><circle cx="64" cy="22" r="6" fill="#28C840"/>
+<text x="84" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#EAF2E8">YEELIGHT</text><text x="171" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#44D62C">BAR</text>
+<rect x="700" y="13" width="74" height="20" rx="10" fill="#1d211d" stroke="#2e332e"/><circle cx="714" cy="23" r="3.5" fill="#44D62C"/><text x="723" y="27" font-family="monospace" font-size="10" font-weight="700" fill="#8FA889">ONLINE</text>
+<line x1="1" y1="42" x2="899" y2="42" stroke="#44D62C" stroke-opacity="0.4"/>
+<rect x="1" y="43" width="212" height="556" fill="#11140F"/>
+<text x="22" y="86" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">☀  СВЕТ</text>
+<rect x="8" y="106" width="196" height="30" rx="4" fill="#44D62C" fill-opacity="0.14"/><rect x="8" y="106" width="3" height="30" fill="#44D62C"/>
+<text x="22" y="126" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#44D62C">▦  ЭФФЕКТЫ</text>
+<text x="22" y="166" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◫  СЦЕНЫ</text>
+<text x="22" y="206" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◍  УСТРОЙСТВА</text>
+<text x="22" y="246" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">⚙  НАСТРОЙКИ</text>
+
+<text x="238" y="78" font-family="Arial" font-size="16" font-weight="900" letter-spacing="1.2" fill="#EAF2E8">ЭФФЕКТЫ</text>
+<rect x="238" y="92" width="430" height="30" rx="6" fill="#1a1f1a" stroke="#2e332e"/>
+<line x1="381" y1="96" x2="381" y2="118" stroke="#2e332e"/><line x1="524" y1="96" x2="524" y2="118" stroke="#2e332e"/>
+<text x="310" y="112" text-anchor="middle" font-family="Arial" font-size="12" fill="#8FA889">Выкл</text>
+<rect x="383" y="94" width="139" height="26" rx="5" fill="#44D62C"/><text x="452" y="112" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#0E110E">Экран</text>
+<text x="596" y="112" text-anchor="middle" font-family="Arial" font-size="12" fill="#8FA889">Музыка</text>
+
+<path d="M249 138 L862 138 L862 360 L854 368 L238 368 L238 146 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="160" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">⌨  КЛАВИАТУРА</text>
+<circle cx="256" cy="180" r="4" fill="#44D62C"/>
+<text x="270" y="184" font-family="Arial" font-size="13" font-weight="700" fill="#EAF2E8">Keychron V1 Max</text>
+<text x="406" y="184" font-family="Arial" font-size="10" fill="#8FA889">Подключена по USB</text>
+<rect x="816" y="172" width="36" height="20" rx="10" fill="#44D62C"/><circle cx="842" cy="182" r="8" fill="#EAF2E8"/>
+<text x="252" y="212" font-family="Arial" font-size="12" fill="#9AA892">Откуда цвет</text>
+<rect x="334" y="200" width="78" height="22" rx="5" fill="#1a1f1a" stroke="#2e332e"/><text x="346" y="215" font-family="Arial" font-size="11" fill="#C7D3C2">Низ ▾</text>
+<rect x="430" y="200" width="34" height="22" rx="5" fill="#00D0E0"/><text x="447" y="215" text-anchor="middle" font-family="monospace" font-size="9" fill="#06343a">●</text>
+
+<rect x="278" y="238" width="544" height="14" rx="2" fill="url(#scene)"/>
+<rect x="278" y="244" width="544" height="8" fill="#00D0E0"/>
+<text x="550" y="266" text-anchor="middle" font-family="Arial" font-size="10" fill="#8FA889">нижняя кромка экрана  →  на клавиатуру</text>
+
+<rect x="300" y="280" width="500" height="74" rx="10" fill="#00D0E0" opacity="0.16"/>
+<rect x="312" y="286" width="476" height="62" rx="8" fill="#0c1418" stroke="#00D0E0" stroke-opacity="0.6"/>
+<g fill="#0e1a1e" stroke="#00D0E0" stroke-opacity="0.55" stroke-width="0.6">
+<g>
+<rect x="320" y="292" width="20" height="11" rx="2"/><rect x="343" y="292" width="20" height="11" rx="2"/><rect x="366" y="292" width="20" height="11" rx="2"/><rect x="389" y="292" width="20" height="11" rx="2"/><rect x="412" y="292" width="20" height="11" rx="2"/><rect x="435" y="292" width="20" height="11" rx="2"/><rect x="458" y="292" width="20" height="11" rx="2"/><rect x="481" y="292" width="20" height="11" rx="2"/><rect x="504" y="292" width="20" height="11" rx="2"/><rect x="527" y="292" width="20" height="11" rx="2"/><rect x="550" y="292" width="20" height="11" rx="2"/><rect x="573" y="292" width="20" height="11" rx="2"/><rect x="596" y="292" width="20" height="11" rx="2"/><rect x="619" y="292" width="20" height="11" rx="2"/><rect x="642" y="292" width="20" height="11" rx="2"/><rect x="665" y="292" width="20" height="11" rx="2"/><rect x="688" y="292" width="20" height="11" rx="2"/><rect x="711" y="292" width="20" height="11" rx="2"/><rect x="734" y="292" width="20" height="11" rx="2"/><rect x="757" y="292" width="22" height="11" rx="2"/>
+</g>
+<g>
+<rect x="320" y="306" width="26" height="11" rx="2"/><rect x="349" y="306" width="20" height="11" rx="2"/><rect x="372" y="306" width="20" height="11" rx="2"/><rect x="395" y="306" width="20" height="11" rx="2"/><rect x="418" y="306" width="20" height="11" rx="2"/><rect x="441" y="306" width="20" height="11" rx="2"/><rect x="464" y="306" width="20" height="11" rx="2"/><rect x="487" y="306" width="20" height="11" rx="2"/><rect x="510" y="306" width="20" height="11" rx="2"/><rect x="533" y="306" width="20" height="11" rx="2"/><rect x="556" y="306" width="20" height="11" rx="2"/><rect x="579" y="306" width="20" height="11" rx="2"/><rect x="602" y="306" width="20" height="11" rx="2"/><rect x="625" y="306" width="34" height="11" rx="2"/><rect x="662" y="306" width="20" height="11" rx="2"/><rect x="685" y="306" width="20" height="11" rx="2"/><rect x="708" y="306" width="20" height="11" rx="2"/><rect x="731" y="306" width="20" height="11" rx="2"/><rect x="754" y="306" width="25" height="11" rx="2"/>
+</g>
+<g>
+<rect x="320" y="320" width="32" height="11" rx="2"/><rect x="355" y="320" width="20" height="11" rx="2"/><rect x="378" y="320" width="20" height="11" rx="2"/><rect x="401" y="320" width="20" height="11" rx="2"/><rect x="424" y="320" width="20" height="11" rx="2"/><rect x="447" y="320" width="20" height="11" rx="2"/><rect x="470" y="320" width="20" height="11" rx="2"/><rect x="493" y="320" width="20" height="11" rx="2"/><rect x="516" y="320" width="20" height="11" rx="2"/><rect x="539" y="320" width="20" height="11" rx="2"/><rect x="562" y="320" width="20" height="11" rx="2"/><rect x="585" y="320" width="20" height="11" rx="2"/><rect x="608" y="320" width="44" height="11" rx="2"/><rect x="655" y="320" width="20" height="11" rx="2"/><rect x="731" y="320" width="20" height="11" rx="2"/><rect x="754" y="320" width="25" height="11" rx="2"/>
+</g>
+<g>
+<rect x="320" y="334" width="42" height="11" rx="2"/><rect x="365" y="334" width="20" height="11" rx="2"/><rect x="441" y="334" width="120" height="11" rx="2"/><rect x="608" y="334" width="20" height="11" rx="2"/><rect x="708" y="334" width="20" height="11" rx="2"/><rect x="731" y="334" width="20" height="11" rx="2"/><rect x="754" y="334" width="25" height="11" rx="2"/>
+</g>
+</g>
+<rect x="312" y="343" width="476" height="5" rx="2" fill="#00D0E0" opacity="0.7"/>
+
+<text x="252" y="392" font-family="Arial" font-size="11" fill="#8FA889">Любая Keychron на QMK/VIA по USB — RGB светится в цвет выбранной зоны (~20 Гц, без износа).</text>
+</svg>

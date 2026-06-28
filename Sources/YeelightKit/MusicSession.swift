@@ -33,10 +33,12 @@ public final class YeelightMusicSession {
     public var isConnected: Bool { queue.sync { connFD >= 0 } }
 
     deinit {
-        // best-effort: don't leave the lamp stuck in music mode or leak fds
+        // best-effort: don't leave the lamp stuck in music mode or leak fds. The fd close is local;
+        // the network teardown is fired on a background queue so dealloc never blocks on a socket.
         if connFD >= 0 { close(connFD) }
         if listenFD >= 0 { close(listenFD) }
-        _ = try? Self.quickCommand(ip: deviceIP, port: tcpPort, method: "set_music", params: [0])
+        let ip = deviceIP, port = tcpPort
+        DispatchQueue.global(qos: .utility).async { _ = try? Self.quickCommand(ip: ip, port: port, method: "set_music", params: [0]) }
     }
 
     /// Open the listener and bring the lamp into music mode (connecting back to us). Non-blocking.

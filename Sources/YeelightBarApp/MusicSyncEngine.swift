@@ -16,8 +16,10 @@ enum MusicStyle: Hashable { case beat, spectrum }
 final class MusicSyncEngine: NSObject, SCStreamOutput {
     var onState: ((Bool, String?) -> Void)?
     var onColor: ((Int) -> Void)?
-    var sensitivity = 4.0
-    var style: MusicStyle = .beat
+    private var sensitivity = 4.0      // read on `queue`; mutate only via the setters
+    private var style: MusicStyle = .beat
+    func setSensitivity(_ v: Double) { queue.async { self.sensitivity = v } }
+    func setStyle(_ s: MusicStyle) { queue.async { self.style = s } }
 
     private var stream: SCStream?
     private var out: SyncOutput?

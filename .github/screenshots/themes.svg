@@ -1,0 +1,32 @@
+<svg width="100%" viewBox="0 0 680 200" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Four redesigned themes: Venom, Crimson, Forge, Solar (dark mode)</title>
+<desc>Each theme now has a deep brand-tinted dark chrome and a punchy accent: Venom green-black, Crimson red-black, Forge amber-black, Solar orange-black.</desc>
+<defs>
+<g id="tcard">
+<rect x="0" y="0" width="140" height="150" rx="10" fill="var(--bg)"/>
+<rect x="0" y="0" width="140" height="64" rx="10" fill="var(--ac)" opacity="0.10"/>
+<rect x="0" y="0" width="140" height="150" rx="10" fill="none" stroke="var(--ac)" stroke-opacity="0.40"/>
+<circle cx="16" cy="15" r="2.5" fill="var(--ac)"/>
+<rect x="24" y="13" width="78" height="4" rx="2" fill="var(--ac)"/>
+<rect x="12" y="30" width="116" height="44" rx="7" fill="var(--sf)"/>
+<rect x="20" y="44" width="44" height="4" rx="2" fill="var(--ac)" opacity="0.5"/>
+<rect x="20" y="58" width="70" height="5" rx="2.5" fill="#FFFFFF" opacity="0.12"/>
+<rect x="20" y="58" width="40" height="5" rx="2.5" fill="var(--ac)"/>
+<circle cx="60" cy="60.5" r="5" fill="#EDEDED"/>
+<rect x="96" y="40" width="24" height="13" rx="6.5" fill="var(--ac)"/>
+<circle cx="113.5" cy="46.5" r="5" fill="#EDEDED"/>
+<rect x="12" y="82" width="116" height="40" rx="7" fill="var(--sf)"/>
+<rect x="20" y="96" width="58" height="14" rx="4" fill="var(--ac)"/>
+<rect x="86" y="95" width="34" height="16" rx="8" fill="var(--ac)" fill-opacity="0.18"/>
+<circle cx="95" cy="103" r="3" fill="var(--ac)"/>
+</g>
+</defs>
+<g transform="translate(30,18)" style="--bg:#0A130B;--ac:#4DF240;--sf:#122014"><use href="#tcard"/></g>
+<g transform="translate(195,18)" style="--bg:#17090C;--ac:#FF384D;--sf:#250F13"><use href="#tcard"/></g>
+<g transform="translate(360,18)" style="--bg:#161107;--ac:#FFBD21;--sf:#221B0D"><use href="#tcard"/></g>
+<g transform="translate(525,18)" style="--bg:#190D06;--ac:#FF801F;--sf:#27160A"><use href="#tcard"/></g>
+<text x="100" y="186" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="800" fill="#4DF240">Venom</text>
+<text x="265" y="186" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="800" fill="#FF384D">Crimson</text>
+<text x="430" y="186" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="800" fill="#FFBD21">Forge</text>
+<text x="595" y="186" text-anchor="middle" font-family="Arial" font-size="12.5" font-weight="800" fill="#FF801F">Solar</text>
+</svg>

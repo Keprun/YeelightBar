@@ -103,8 +103,10 @@ final class ScreenSyncEngine: NSObject, SCStreamOutput {
     /// Live per-(display, region) capture geometry. Seeded from the targets at start and updatable
     /// without restarting the capture, so the geometry sliders respond instantly. Touched only on `queue`.
     private var geoms: [CGDirectDisplayID: [SyncRegion: ZoneGeom]] = [:]
-    var smoothing: Double = 0.35
-    var saturation: Double = 1.25
+    private var smoothing: Double = 0.35      // read on `queue`; mutate only via setSmoothing
+    private var saturation: Double = 1.25
+    func setSmoothing(_ v: Double) { queue.async { self.smoothing = v } }
+    func setSaturation(_ v: Double) { queue.async { self.saturation = v } }
 
     private var out: SyncOutput?
     private var streamsByDisplay: [CGDirectDisplayID: SCStream] = [:]              // keyed by RESOLVED physical display

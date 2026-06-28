@@ -31,11 +31,24 @@
 ## Screenshots
 
 <p align="center">
+  <img src=".github/screenshots/keychron.svg" alt="Keychron keyboard ambilight" width="820"><br>
+  <sub><b>Keychron keyboard ambilight</b> — any Keychron QMK/VIA keyboard lights up in the colour of a chosen screen zone, over USB.</sub>
+</p>
+
+<p align="center">
   <img src=".github/screenshots/screen-ambilight.svg" alt="Screen-sync ambilight" width="780"><br>
   <sub><b>Screen-sync ambilight</b> — each lamp samples its own display &amp; region; addressable strips map per-segment, all over a live monitor map.</sub>
 </p>
 
 <table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/settings.svg" alt="Themes &amp; settings"></td>
+    <td width="50%"><img src=".github/screenshots/themes.svg" alt="Gamer-brand themes"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Themes, appearance &amp; language</b> — four palettes, Light / Dark / Auto, 7 languages.</sub></td>
+    <td align="center"><sub><b>Four dynamic themes</b> — Venom · Crimson · Forge · Solar, each day/night.</sub></td>
+  </tr>
   <tr>
     <td width="50%"><img src=".github/screenshots/light-ambient.svg" alt="Light &amp; ambient"></td>
     <td width="50%"><img src=".github/screenshots/device-groups.svg" alt="Device groups"></td>
@@ -67,8 +80,15 @@
   - Live preview: a screen-shaped panel per display showing exactly which region each lamp samples, in its live colour.
 - **Music reactivity** — captures *system* audio (no microphone), splits it into bass/mid/treble with IIR filters.
   - **Beat** mode pumps brightness on the kick; **Spectrum** mode maps bass→red / mid→green / treble→blue.
-- **Two surfaces** — a compact menu-bar panel for quick tweaks and a full resizable window (`NavigationSplitView`)
-  for setup.
+- **Keychron keyboard ambilight** — drives the RGB matrix of *any* Keychron QMK/VIA keyboard (over USB) from the
+  same screen-sync or music engine, choosing which screen zone it samples. Model is auto-detected (matched by
+  raw-HID, not a hard-coded PID), colour goes to both the per-key matrix and underglow channels, and nothing is
+  written to EEPROM (no wear).
+- **Gamer-brand themes** — Venom (green) · Crimson (red) · Forge (amber) · Solar (orange), each with full light +
+  dark variants that follow the macOS day/night switch. Live in-app **theme**, **appearance** (Light / Dark / Auto)
+  and **language** (7 languages) pickers in Settings.
+- **Two surfaces** — a compact menu-bar panel for quick tweaks and a full resizable borderless window
+  (`NavigationSplitView` with a custom chrome) for setup.
 - **Robust on a real network** — auto-discovery (SSDP + active subnet scan), reconnect on DHCP IP changes, and
   serialized control so the lamp never drops a command from concurrent connections.
 

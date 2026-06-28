@@ -63,10 +63,10 @@ final class LampController: ObservableObject {
     @Published var syncLengths: [String: Double] = [:] { didSet { pushGeoms() } }   // per-lamp capture length (along the edge)
     @Published var syncCenters: [String: Double] = [:] { didSet { pushGeoms() } }   // where that length is centred
     @Published var brightnessFollow = false
-    @Published var syncSmoothing: Double = 0.35 { didSet { sync.smoothing = syncSmoothing } }
-    @Published var syncSaturation: Double = 1.25 { didSet { sync.saturation = syncSaturation } }
-    @Published var musicSensitivity: Double = 4.0 { didSet { music.sensitivity = musicSensitivity } }
-    @Published var musicStyle: MusicStyle = .beat { didSet { music.style = musicStyle } }
+    @Published var syncSmoothing: Double = 0.35 { didSet { sync.setSmoothing(syncSmoothing) } }
+    @Published var syncSaturation: Double = 1.25 { didSet { sync.setSaturation(syncSaturation) } }
+    @Published var musicSensitivity: Double = 4.0 { didSet { music.setSensitivity(musicSensitivity) } }
+    @Published var musicStyle: MusicStyle = .beat { didSet { music.setStyle(musicStyle) } }
     @Published var syncRegions: [String: SyncRegion] = [:] { didSet { if !suppressRegionRestart, screenSyncOn || musicSyncOn { restartSync() } } }
     private var suppressRegionRestart = false   // set while a group edit handles its own single restart
     @Published var power = false
@@ -86,6 +86,7 @@ final class LampController: ObservableObject {
     /// command if two connections hit it at once (e.g. set_power + bg_set_power racing).
     private let io = DispatchQueue(label: "yeelightbar.control")
     private var controlGen = 0   // bumped on every control action; a stale blink-restore checks it before clobbering
+    private var lastRegionSnap: [CGDirectDisplayID: [SyncRegion: Int]] = [:]   // de-dup screen-sync colour pushes
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
     let keyboard = KeychronKeyboard()
@@ -96,6 +97,8 @@ final class LampController: ObservableObject {
         sync.onState = { [weak self] running, err in self?.screenSyncOn = running; self?.screenSyncStatus = err }
         sync.onRegionColors = { [weak self] d in
             guard let self else { return }
+            guard d != self.lastRegionSnap else { return }   // skip the @Published churn when nothing changed
+            self.lastRegionSnap = d
             self.regionColors = d.mapValues { $0.mapValues { Color(rgb: $0) } }
             // mini-panel swatch follows the PRIMARY lamp's own (display, region), not whichever fired last
             if let ip = self.selected?.ip, let rgb = d[self.displayID(forLamp: ip)]?[self.syncRegions[ip] ?? .top] {
@@ -103,16 +106,16 @@ final class LampController: ObservableObject {
             }
         }
         sync.onLuma = { [weak self] luma in self?.applyLuma(luma) }
-        sync.smoothing = syncSmoothing
-        sync.saturation = syncSaturation
+        sync.setSmoothing(syncSmoothing)
+        sync.setSaturation(syncSaturation)
         music.onState = { [weak self] running, err in self?.musicSyncOn = running; self?.musicSyncStatus = err }
         music.onColor = { [weak self] rgb in
             guard let self else { return }
             self.syncColor = Color(rgb: rgb)
             if self.keyboardSyncOn { self.keyboard.setColor(rgb); self.keyboardColor = Color(rgb: rgb) }   // beat → keyboard
         }
-        music.sensitivity = musicSensitivity
-        music.style = musicStyle
+        music.setSensitivity(musicSensitivity)
+        music.setStyle(musicStyle)
         sync.onAuxColor = { [weak self] rgb in self?.keyboard.setColor(rgb); self?.keyboardColor = Color(rgb: rgb) }
         keyboard.onLink = { [weak self] link, model in
             guard let self else { return }
@@ -314,9 +317,13 @@ final class LampController: ObservableObject {
     /// Background re-read after a discrete action — never disconnects on a transient miss.
     private func pollState() {
         guard let device, connected else { return }
+        let ip = selected?.ip
         io.async {
             let props = (try? device.properties(["power", "bright", "ct", "bg_rgb", "bg_power", "rgb", "main_power"])) ?? []
-            Task { @MainActor in if props.count >= 4 { self.apply(props) } }
+            Task { @MainActor in
+                guard self.selected?.ip == ip else { return }   // primary swapped mid-read → discard stale props
+                if props.count >= 4 { self.apply(props) }
+            }
         }
     }
 
@@ -361,6 +368,11 @@ final class LampController: ObservableObject {
         pollTimer?.invalidate(); pollTimer = nil
         pollMisses = 0
         stopScreenSync(); stopMusicSync()
+        if keyboardSyncOn {              // keyboard ambilight is lamp-independent — keep it alive while the lamp reconnects
+            pushKeyboardAux(); keyboard.beginSession()
+            screenSyncOn = true; screenSyncStatus = nil
+            sync.start(targets: [])
+        }
         connected = false
         connectError = "Связь с лампой потеряна — переподключаюсь…"
         let savedID = UserDefaults.standard.string(forKey: savedIDKey) ?? ""
@@ -472,7 +484,8 @@ final class LampController: ObservableObject {
 
     /// Debounced colour push — coalesces drags so we stay under the lamp's ~60 cmd/min TCP quota.
     func setAmbient(_ c: Color) {
-        if screenSyncOn { stopScreenSync() }   // a static colour replaces live screen-sync
+        if screenSyncOn { stopScreenSync() }   // a static colour replaces live screen-sync…
+        if musicSyncOn { stopMusicSync() }     // …and the beat, else they fight over the channel
         ambientColor = c
         ambientOn = true
         ambientWork?.cancel()
