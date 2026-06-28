@@ -38,6 +38,7 @@ final class LampController: ObservableObject {
     // Keychron keyboard ambilight (rides the screen effect; samples its own screen zone)
     @Published var keyboardSyncOn = false
     @Published var keyboardLink: KeychronKeyboard.Link = .none
+    @Published var keyboardModel = "Keychron"
     @Published var keyboardRegion: SyncRegion = .bottom { didSet { if screenSyncOn { pushKeyboardAux() } } }   // live
     @Published var keyboardDisplay: CGDirectDisplayID = CGMainDisplayID() { didSet { if screenSyncOn { restartSync() } } }   // re-capture
     @Published var keyboardColor = Color(rgb: 0x000000)
@@ -109,9 +110,10 @@ final class LampController: ObservableObject {
         music.sensitivity = musicSensitivity
         music.style = musicStyle
         sync.onAuxColor = { [weak self] rgb in self?.keyboard.setColor(rgb); self?.keyboardColor = Color(rgb: rgb) }
-        keyboard.onLink = { [weak self] link in
+        keyboard.onLink = { [weak self] link, model in
             guard let self else { return }
             self.keyboardLink = link
+            self.keyboardModel = model
             if link != .cable, self.keyboardSyncOn { self.setKeyboardSync(false) }   // cable gone → stop driving it
         }
         keyboard.refresh()

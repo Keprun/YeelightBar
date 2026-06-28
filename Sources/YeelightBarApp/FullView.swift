@@ -230,7 +230,7 @@ struct FullView: View {
                     Circle()
                         .fill(lamp.keyboardLink == .cable ? Color.razerGreen : (lamp.keyboardLink == .dongle ? Color.orange : Color.gray))
                         .frame(width: 8, height: 8)
-                    Text(verbatim: "Keychron V1 Max").font(.callout)
+                    Text(verbatim: lamp.keyboardModel).font(.callout)
                     Text(keyboardStatus).font(.caption2).foregroundStyle(Color.razerSecondary)
                     Spacer()
                     Toggle("", isOn: Binding(get: { lamp.keyboardSyncOn }, set: { lamp.setKeyboardSync($0) }))

@@ -13,26 +13,28 @@ import IOKit.hid
 final class KeychronKeyboard {
     enum Link: Equatable { case none, dongle, cable }
 
-    private let vid = 0x3434
-    private let cablePID = 0x0913
-    private let donglePID = 0xD030
+    private let vid = 0x3434       // Keychron (matches ALL its QMK/VIA keyboards, no per-model PID)
     private let usagePage = 0xFF60
     private let usage = 0x61
     private let reportLen = 32
 
-    /// VIA: id_custom_set_value, channel = qmk_rgb_matrix(3), value ids brightness=1 / effect=2 / color=4.
+    /// VIA id_custom_set_value. We drive BOTH custom RGB channels so any Keychron works: per-key
+    /// rgb_matrix (3) and underglow rgblight (2). value ids: brightness=1, effect=2, color=4.
     private enum V {
         static let setValue: UInt8 = 0x07
-        static let rgbChannel: UInt8 = 0x03
+        static let rgbMatrix: UInt8 = 0x03
+        static let rgbLight: UInt8 = 0x02
         static let brightness: UInt8 = 1
         static let effect: UInt8 = 2
         static let color: UInt8 = 4
-        static let solidColor: UInt8 = 1   // RGB_MATRIX_SOLID_COLOR
+        static let solid: UInt8 = 1   // SOLID_COLOR (matrix) / STATIC_LIGHT (rgblight) are both mode 1
     }
 
-    /// Fired (on the main queue) whenever the link state changes — drives the UI.
-    var onLink: ((Link) -> Void)?
+    /// Fired (on the main queue) when link state or detected model changes — drives the UI.
+    var onLink: ((Link, String) -> Void)?
     private(set) var link: Link = .none
+    private(set) var model = "Keychron"
+    private var lastModel = ""
 
     private let io = DispatchQueue(label: "yeelightbar.keychron")
     private var manager: IOHIDManager?
@@ -68,23 +70,34 @@ final class KeychronKeyboard {
         guard let mgr = manager, let set = IOHIDManagerCopyDevices(mgr) as? Set<IOHIDDevice>, !set.isEmpty else {
             setLink(.none); return false
         }
-        func pid(_ d: IOHIDDevice) -> Int { (IOHIDDeviceGetProperty(d, kIOHIDProductIDKey as CFString) as? Int) ?? 0 }
-        if let cable = set.first(where: { pid($0) == cablePID }) {
-            guard IOHIDDeviceOpen(cable, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess else {
-                setLink(.none); return false   // cable present but couldn't open (busy) — not usable
-            }
-            device = cable; effectArmed = false; setLink(.cable); return true
+        func product(_ d: IOHIDDevice) -> String {
+            ((IOHIDDeviceGetProperty(d, kIOHIDProductKey as CFString) as? String) ?? "").trimmingCharacters(in: .whitespaces)
         }
-        setLink(set.contains(where: { pid($0) == donglePID }) ? .dongle : .none)   // dongle present but unusable for RGB
+        // The wired keyboard reports its MODEL ("Keychron K8 Pro", "V1 Max", …); the 2.4 GHz
+        // receiver reports "Keychron Link" and is a dead end for VIA. Pick the real keyboard.
+        func isReceiver(_ d: IOHIDDevice) -> Bool {
+            let p = product(d).lowercased()
+            return p.contains("link") || p.contains("receiver") || p.contains("dongle")
+        }
+        if let kbd = set.first(where: { !isReceiver($0) }) {
+            guard IOHIDDeviceOpen(kbd, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess else {
+                setLink(.none); return false   // present but couldn't open (busy) — not usable
+            }
+            device = kbd; effectArmed = false
+            let name = product(kbd); model = name.isEmpty ? "Keychron" : name
+            setLink(.cable); return true
+        }
+        setLink(.dongle)   // only a 2.4 GHz receiver present → RGB unavailable until cabled
         return false
     }
 
     private func refreshLink() { _ = ensureOpen() }
 
     private func setLink(_ l: Link) {
-        guard l != link else { return }
-        link = l
-        DispatchQueue.main.async { self.onLink?(l) }
+        let m = model
+        guard l != link || m != lastModel else { return }
+        link = l; lastModel = m
+        DispatchQueue.main.async { self.onLink?(l, m) }
     }
 
     // MARK: - Output
@@ -105,13 +118,15 @@ final class KeychronKeyboard {
     func setColor(_ rgb: Int) {
         io.async {
             guard self.ensureOpen(), let d = self.device, self.link == .cable else { return }
+            let (h, s, v) = Self.rgbToHSV(rgb)
             if !self.effectArmed {
-                self.send(d, [V.setValue, V.rgbChannel, V.effect, V.solidColor])
+                self.send(d, [V.setValue, V.rgbMatrix, V.effect, V.solid])   // per-key matrix → solid
+                self.send(d, [V.setValue, V.rgbLight, V.effect, V.solid])    // underglow → static
                 self.effectArmed = true
             }
-            let (h, s, v) = Self.rgbToHSV(rgb)
-            self.send(d, [V.setValue, V.rgbChannel, V.color, h, s])
-            self.send(d, [V.setValue, V.rgbChannel, V.brightness, v])
+            // drive both custom channels; the one the firmware lacks is a harmless no-op (id_unhandled)
+            self.send(d, [V.setValue, V.rgbMatrix, V.color, h, s]); self.send(d, [V.setValue, V.rgbMatrix, V.brightness, v])
+            self.send(d, [V.setValue, V.rgbLight, V.color, h, s]); self.send(d, [V.setValue, V.rgbLight, V.brightness, v])
         }
     }
 
