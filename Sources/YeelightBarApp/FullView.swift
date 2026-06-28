@@ -30,6 +30,8 @@ struct FullView: View {
     @ObservedObject var lamp: LampController
     @State private var section: AppSection = .control
     @State private var assignTarget: CGDirectDisplayID?
+    @State private var langChoice = AppLanguage.current
+    @State private var langChanged = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -149,6 +151,31 @@ struct FullView: View {
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Настройки").razerHeading(16)
+            GroupBox("Язык") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Picker("Язык приложения", selection: $langChoice) {
+                        Text("Системный").tag("system")
+                        Text(verbatim: "Русский").tag("ru")
+                        Text(verbatim: "English").tag("en")
+                        Text(verbatim: "中文").tag("zh-Hans")
+                        Text(verbatim: "فارسی").tag("fa")
+                        Text(verbatim: "Deutsch").tag("de")
+                        Text(verbatim: "Italiano").tag("it")
+                        Text(verbatim: "Français").tag("fr")
+                    }
+                    .pickerStyle(.menu).labelsHidden().fixedSize()
+                    .onChange(of: langChoice) { v in AppLanguage.set(v); langChanged = true }
+                    if langChanged {
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.clockwise.circle.fill").foregroundStyle(Color.razerGreen)
+                            Text("Перезапусти приложение, чтобы применить язык.")
+                                .font(.caption).foregroundStyle(Color.razerSecondary)
+                            Spacer()
+                            Button("Перезапустить") { relaunchApp() }.buttonStyle(.borderedProminent)
+                        }
+                    }
+                }
+            }
             GroupBox("О приложении") {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -162,11 +189,6 @@ struct FullView: View {
                     } label: { Label("Открыть на GitHub", systemImage: "arrow.up.forward.square") }
                         .buttonStyle(.bordered)
                 }
-            }
-            GroupBox("Основные") {
-                Text("Функционал настроек добавим здесь.")
-                    .font(.callout).foregroundStyle(Color.razerSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -594,6 +616,32 @@ struct FullView: View {
         Color(rgb: 0xFF5A3C), Color(rgb: 0xFFB23E), Color(rgb: 0xF5E6C8),
         Color(rgb: 0x2EC28E), Color(rgb: 0x378ADD), Color(rgb: 0xE30DFF),
     ]
+}
+
+/// In-app language override. Writes AppleLanguages into the app's OWN UserDefaults domain so the
+/// chosen `.lproj` is picked up on the next launch — consistent for both SwiftUI `Text` and
+/// `NSLocalizedString`. "system" clears the override and follows the macOS language.
+enum AppLanguage {
+    static var current: String { UserDefaults.standard.string(forKey: "langOverride") ?? "system" }
+    static func set(_ code: String) {
+        if code == "system" {
+            UserDefaults.standard.removeObject(forKey: "langOverride")
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.set(code, forKey: "langOverride")
+            UserDefaults.standard.set([code], forKey: "AppleLanguages")
+        }
+    }
+}
+
+/// Relaunch the app (so a new language takes effect): spawn a fresh instance, then quit this one.
+func relaunchApp() {
+    let url = URL(fileURLWithPath: Bundle.main.bundlePath)
+    let cfg = NSWorkspace.OpenConfiguration()
+    cfg.createsNewApplicationInstance = true
+    NSWorkspace.shared.openApplication(at: url, configuration: cfg) { _, _ in
+        DispatchQueue.main.async { NSApp.terminate(nil) }
+    }
 }
 
 /// Turns the host NSWindow into a borderless, full-bleed custom chrome: transparent title bar,

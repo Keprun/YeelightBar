@@ -106,3 +106,9 @@
 "Открыть на GitHub" = "Auf GitHub öffnen";
 "Основные" = "Allgemein";
 "Функционал настроек добавим здесь." = "App-Einstellungen kommen hierher.";
+/* Language picker */
+"Язык" = "Sprache";
+"Язык приложения" = "App-Sprache";
+"Системный" = "System";
+"Перезапусти приложение, чтобы применить язык." = "Starte die App neu, um die Sprache anzuwenden.";
+"Перезапустить" = "Neu starten";

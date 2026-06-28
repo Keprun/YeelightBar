@@ -107,3 +107,9 @@ nella scheda «Dispositivi»";
 "Открыть на GitHub" = "Apri su GitHub";
 "Основные" = "Generali";
 "Функционал настроек добавим здесь." = "Le impostazioni dell'app andranno qui.";
+/* Language picker */
+"Язык" = "Lingua";
+"Язык приложения" = "Lingua dell'app";
+"Системный" = "Sistema";
+"Перезапусти приложение, чтобы применить язык." = "Riavvia l'app per applicare la lingua.";
+"Перезапустить" = "Riavvia";

@@ -107,3 +107,9 @@ dans l'onglet «Appareils»";
 "Открыть на GitHub" = "Ouvrir sur GitHub";
 "Основные" = "Général";
 "Функционал настроек добавим здесь." = "Les réglages de l'app viendront ici.";
+/* Language picker */
+"Язык" = "Langue";
+"Язык приложения" = "Langue de l'app";
+"Системный" = "Système";
+"Перезапусти приложение, чтобы применить язык." = "Redémarre l'app pour appliquer la langue.";
+"Перезапустить" = "Redémarrer";
