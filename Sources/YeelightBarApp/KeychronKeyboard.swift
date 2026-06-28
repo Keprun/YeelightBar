@@ -40,6 +40,7 @@ final class KeychronKeyboard {
     private var manager: IOHIDManager?
     private var device: IOHIDDevice?
     private var effectArmed = false   // re-assert SOLID_COLOR once per session
+    private var lastSend = Date.distantPast
 
     init() { io.async { self.setupManager() } }
 
@@ -117,7 +118,10 @@ final class KeychronKeyboard {
     /// Drive the whole matrix to this 0xRRGGBB colour. No-op unless connected by cable.
     func setColor(_ rgb: Int) {
         io.async {
+            let now = Date()
+            guard now.timeIntervalSince(self.lastSend) >= 0.03 else { return }   // cap ~30 Hz (music can fire faster)
             guard self.ensureOpen(), let d = self.device, self.link == .cable else { return }
+            self.lastSend = now
             let (h, s, v) = Self.rgbToHSV(rgb)
             if !self.effectArmed {
                 self.send(d, [V.setValue, V.rgbMatrix, V.effect, V.solid])   // per-key matrix → solid

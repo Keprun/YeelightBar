@@ -106,7 +106,11 @@ final class LampController: ObservableObject {
         sync.smoothing = syncSmoothing
         sync.saturation = syncSaturation
         music.onState = { [weak self] running, err in self?.musicSyncOn = running; self?.musicSyncStatus = err }
-        music.onColor = { [weak self] rgb in self?.syncColor = Color(rgb: rgb) }
+        music.onColor = { [weak self] rgb in
+            guard let self else { return }
+            self.syncColor = Color(rgb: rgb)
+            if self.keyboardSyncOn { self.keyboard.setColor(rgb); self.keyboardColor = Color(rgb: rgb) }   // beat → keyboard
+        }
         music.sensitivity = musicSensitivity
         music.style = musicStyle
         sync.onAuxColor = { [weak self] rgb in self?.keyboard.setColor(rgb); self?.keyboardColor = Color(rgb: rgb) }
@@ -534,16 +538,18 @@ final class LampController: ObservableObject {
         sync.start(targets: lampsReady ? targets : [])   // keyboard-only runs the engine with no lamps
     }
 
-    /// Keychron keyboard ambilight — rides the screen effect, sampling its own screen zone.
+    /// The keyboard follows whatever effect is active: screen → its zone, music → the beat colour.
     func setKeyboardSync(_ on: Bool) {
         keyboardSyncOn = on
-        keyboard.beginSession()
+        if on { keyboard.beginSession() }
         pushKeyboardAux()
         if screenSyncOn {
             if !on && syncTargets().isEmpty { stopScreenSync() }   // keyboard was the only consumer
             else { restartSync() }                                  // re-capture (add / drop the aux display)
+        } else if musicSyncOn {
+            // music drives the keyboard via music.onColor — nothing to (re)start, don't switch modes
         } else if on {
-            toggleScreenSync()                                      // start the engine (keyboard-only is allowed)
+            toggleScreenSync()                                      // no effect running → start screen as the default source
         }
     }
 
@@ -558,8 +564,7 @@ final class LampController: ObservableObject {
         sync.stop()
         screenSyncOn = false
         screenSyncStatus = nil
-        if keyboardSyncOn { keyboardSyncOn = false; pushKeyboardAux() }   // keyboard rides the screen effect — clear it too
-        if wasOn { ambientColor = syncColor; ambientOn = true }           // keep last live colour as static ambient
+        if wasOn { ambientColor = syncColor; ambientOn = true }   // keep last live colour as static ambient
     }
 
     // MARK: - Music sync
@@ -574,6 +579,7 @@ final class LampController: ObservableObject {
         ambientOn = true             // sync turns the backlight on — reflect it in the toggle
         musicSyncOn = true
         musicSyncStatus = "Запуск…"
+        if keyboardSyncOn { keyboard.beginSession() }   // re-arm the keyboard's solid effect for the beat
         fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_power" : "set_power", ["on", "smooth", 200]) } // colour channel on
         music.start(targets: syncTargets())   // drives the whole control group (region ignored for music)
     }
