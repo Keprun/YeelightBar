@@ -243,18 +243,24 @@ struct FullView: View {
                 }
                 if lamp.keyboardSyncOn {
                     HStack(spacing: 10) {
-                        Text("Откуда цвет").font(.caption).foregroundStyle(Color.razerSecondary)
-                        Menu(zoneLabel(lamp.keyboardRegion)) {
-                            Button("Верх") { lamp.keyboardRegion = .top }
-                            Button("Низ") { lamp.keyboardRegion = .bottom }
-                            Button("Лево") { lamp.keyboardRegion = .left }
-                            Button("Право") { lamp.keyboardRegion = .right }
-                            Button("Весь экран") { lamp.keyboardRegion = .full }
-                        }.fixedSize()
-                        if lamp.displays.count > 1 {
-                            Menu(displayShort(lamp.keyboardDisplay)) {
-                                ForEach(lamp.displays) { d in Button(d.label) { lamp.keyboardDisplay = d.id } }
+                        if lamp.syncMode == .music {
+                            Image(systemName: "waveform").font(.caption).foregroundStyle(Color.razerSecondary)
+                            Text("Пульс под музыку").font(.caption).foregroundStyle(Color.razerSecondary)
+                        } else {
+                            // a screen zone only makes sense for screen-sync; music drives colour from the beat
+                            Text("Откуда цвет").font(.caption).foregroundStyle(Color.razerSecondary)
+                            Menu(zoneLabel(lamp.keyboardRegion)) {
+                                Button("Верх") { lamp.keyboardRegion = .top }
+                                Button("Низ") { lamp.keyboardRegion = .bottom }
+                                Button("Лево") { lamp.keyboardRegion = .left }
+                                Button("Право") { lamp.keyboardRegion = .right }
+                                Button("Весь экран") { lamp.keyboardRegion = .full }
                             }.fixedSize()
+                            if lamp.displays.count > 1 {
+                                Menu(displayShort(lamp.keyboardDisplay)) {
+                                    ForEach(lamp.displays) { d in Button(d.label) { lamp.keyboardDisplay = d.id } }
+                                }.fixedSize()
+                            }
                         }
                         Spacer()
                         RoundedRectangle(cornerRadius: 5).fill(lamp.keyboardColor).frame(width: 30, height: 18)
