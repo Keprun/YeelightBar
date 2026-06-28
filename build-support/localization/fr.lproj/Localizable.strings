@@ -100,3 +100,10 @@ dans l'onglet «Appareils»";
 "основная" = "principale";
 "пульс под системный звук → ambient" = "pulsation sur le son système → ambient";
 "экран" = "écran";
+/* Settings */
+"Настройки" = "Réglages";
+"О приложении" = "À propos";
+"Версия %@" = "Version %@";
+"Открыть на GitHub" = "Ouvrir sur GitHub";
+"Основные" = "Général";
+"Функционал настроек добавим здесь." = "Les réglages de l'app viendront ici.";

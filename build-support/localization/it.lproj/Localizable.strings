@@ -100,3 +100,10 @@ nella scheda «Dispositivi»";
 "основная" = "principale";
 "пульс под системный звук → ambient" = "pulsa sull'audio di sistema → ambient";
 "экран" = "schermo";
+/* Settings */
+"Настройки" = "Impostazioni";
+"О приложении" = "Informazioni";
+"Версия %@" = "Versione %@";
+"Открыть на GitHub" = "Apri su GitHub";
+"Основные" = "Generali";
+"Функционал настроек добавим здесь." = "Le impostazioni dell'app andranno qui.";

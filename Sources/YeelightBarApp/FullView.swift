@@ -3,7 +3,7 @@ import AppKit
 import YeelightKit
 
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
-    case control, effects, scenes, devices
+    case control, effects, scenes, devices, settings
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -11,6 +11,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .effects: return NSLocalizedString("Эффекты", comment: "")
         case .scenes: return NSLocalizedString("Сцены", comment: "")
         case .devices: return NSLocalizedString("Устройства", comment: "")
+        case .settings: return NSLocalizedString("Настройки", comment: "")
         }
     }
     var icon: String {
@@ -19,6 +20,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .effects: return "sparkles.tv.fill"
         case .scenes: return "theatermasks.fill"
         case .devices: return "lightbulb.fill"
+        case .settings: return "gearshape.fill"
         }
     }
 }
@@ -75,6 +77,11 @@ struct FullView: View {
             Text("YEELIGHT").font(.system(size: 13, weight: .heavy)).tracking(2.5).foregroundStyle(Color.razerText)
             Text("BAR").font(.system(size: 13, weight: .heavy)).tracking(2.5).foregroundStyle(Color.razerGreen)
             Spacer()
+            Button { section = .settings } label: {
+                Image(systemName: "gearshape.fill").font(.system(size: 13))
+                    .foregroundStyle(section == .settings ? Color.razerGreen : Color.razerSecondary)
+            }
+            .buttonStyle(.plain).help("Настройки").padding(.trailing, 4)
             HStack(spacing: 6) {
                 Circle().fill(lamp.connected ? Color.razerGreen : Color.gray)
                     .frame(width: 7, height: 7).razerPulse(lamp.connected)
@@ -115,7 +122,7 @@ struct FullView: View {
     }
 
     @ViewBuilder private var detail: some View {
-        if !lamp.connected && section != .devices {
+        if !lamp.connected && section != .devices && section != .settings {
             notConnected
         } else {
             switch section {
@@ -123,6 +130,7 @@ struct FullView: View {
             case .effects: effectsSection
             case .scenes: scenesSection
             case .devices: devicesSection
+            case .settings: settingsSection
             }
         }
     }
@@ -138,6 +146,35 @@ struct FullView: View {
     // MARK: sections
 
     /// One tab combining the front white and the ambient colour, so there's no jumping between tabs.
+    private var settingsSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Настройки").razerHeading(16)
+            GroupBox("О приложении") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "bolt.fill").foregroundStyle(Color.razerGreen)
+                        Text("YeelightBar").font(.callout).bold()
+                        Spacer()
+                        Text(String(format: NSLocalizedString("Версия %@", comment: ""), appVersion)).razerHUD()
+                    }
+                    Button {
+                        if let u = URL(string: "https://github.com/Keprun/YeelightBar") { NSWorkspace.shared.open(u) }
+                    } label: { Label("Открыть на GitHub", systemImage: "arrow.up.forward.square") }
+                        .buttonStyle(.bordered)
+                }
+            }
+            GroupBox("Основные") {
+                Text("Функционал настроек добавим здесь.")
+                    .font(.callout).foregroundStyle(Color.razerSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
+    }
+
     private var lightSection: some View {
         VStack(alignment: .leading, spacing: 22) {
             controlSection

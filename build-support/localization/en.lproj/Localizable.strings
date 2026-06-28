@@ -99,3 +99,10 @@
 "основная" = "main";
 "пульс под системный звук → ambient" = "pulse to system audio → ambient";
 "экран" = "screen";
+/* Settings */
+"Настройки" = "Settings";
+"О приложении" = "About";
+"Версия %@" = "Version %@";
+"Открыть на GitHub" = "Open on GitHub";
+"Основные" = "General";
+"Функционал настроек добавим здесь." = "App settings will go here.";
