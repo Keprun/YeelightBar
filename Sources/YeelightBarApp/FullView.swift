@@ -153,18 +153,28 @@ struct FullView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Настройки").razerHeading(16)
             GroupBox("Тема") {
-                HStack(spacing: 10) {
-                    ForEach(AppTheme.allCases) { t in
-                        Button { themeManager.theme = t } label: {
-                            VStack(spacing: 6) {
-                                RoundedRectangle(cornerRadius: 7).fill(t.swatch).frame(height: 36)
-                                    .overlay(RoundedRectangle(cornerRadius: 7)
-                                        .stroke(Color.razerText, lineWidth: themeManager.theme == t ? 2.5 : 0))
-                                Text(verbatim: t.displayName).font(.caption2).lineLimit(1)
-                                    .foregroundStyle(themeManager.theme == t ? Color.razerText : Color.razerSecondary)
-                            }
-                        }.buttonStyle(.plain)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        ForEach(AppTheme.allCases) { t in
+                            Button { themeManager.theme = t } label: {
+                                VStack(spacing: 6) {
+                                    RoundedRectangle(cornerRadius: 7).fill(t.swatch).frame(height: 36)
+                                        .overlay(RoundedRectangle(cornerRadius: 7)
+                                            .stroke(Color.razerText, lineWidth: themeManager.theme == t ? 2.5 : 0))
+                                    Text(verbatim: t.displayName).font(.caption2).lineLimit(1)
+                                        .foregroundStyle(themeManager.theme == t ? Color.razerText : Color.razerSecondary)
+                                }
+                            }.buttonStyle(.plain)
+                        }
                     }
+                    Divider().opacity(0.4)
+                    Text("Оформление").font(.caption).foregroundStyle(Color.razerSecondary)
+                    Picker("", selection: $themeManager.appearance) {
+                        Text("Авто").tag(AppAppearance.auto)
+                        Text("Светлая").tag(AppAppearance.light)
+                        Text("Тёмная").tag(AppAppearance.dark)
+                    }
+                    .pickerStyle(.segmented).labelsHidden()
                 }
             }
             GroupBox("Язык") {

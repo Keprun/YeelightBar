@@ -114,3 +114,8 @@ dans l'onglet «Appareils»";
 "Перезапусти приложение, чтобы применить язык." = "Redémarre l'app pour appliquer la langue.";
 "Перезапустить" = "Redémarrer";
 "Тема" = "Thème";
+/* Appearance */
+"Оформление" = "Apparence";
+"Авто" = "Auto";
+"Светлая" = "Clair";
+"Тёмная" = "Sombre";

@@ -113,3 +113,8 @@
 "Перезапусти приложение, чтобы применить язык." = "Restart the app to apply the language.";
 "Перезапустить" = "Restart";
 "Тема" = "Theme";
+/* Appearance */
+"Оформление" = "Appearance";
+"Авто" = "Auto";
+"Светлая" = "Light";
+"Тёмная" = "Dark";

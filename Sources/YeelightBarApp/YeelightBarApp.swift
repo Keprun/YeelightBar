@@ -45,5 +45,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Force the running Dock icon to the bundled .icns (busts LaunchServices' iconless cache).
         if let u = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
            let img = NSImage(contentsOf: u) { NSApplication.shared.applicationIconImage = img }
+        ThemeManager.shared.applyAppearance()   // restore the saved light/dark override
     }
 }

@@ -114,3 +114,8 @@ nella scheda «Dispositivi»";
 "Перезапусти приложение, чтобы применить язык." = "Riavvia l'app per applicare la lingua.";
 "Перезапустить" = "Riavvia";
 "Тема" = "Tema";
+/* Appearance */
+"Оформление" = "Aspetto";
+"Авто" = "Auto";
+"Светлая" = "Chiaro";
+"Тёмная" = "Scuro";

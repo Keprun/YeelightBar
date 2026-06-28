@@ -73,15 +73,34 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
-/// Holds the selected theme (persisted). Views observe it so a change re-themes the app live.
+/// In-app light/dark override (independent of the macOS day/night switch). `auto` = follow the system.
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case auto, light, dark
+    var id: String { rawValue }
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .auto:  return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark:  return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+/// Holds the selected theme + appearance (persisted). Views observe it so changes apply app-wide live.
 final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     @Published var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: "appTheme") } }
+    @Published var appearance: AppAppearance {
+        didSet { UserDefaults.standard.set(appearance.rawValue, forKey: "appAppearance"); applyAppearance() }
+    }
     private init() {
         let raw = UserDefaults.standard.string(forKey: "appTheme") ?? ""
         let migrate = ["razer": "venom", "rog": "crimson", "tuf": "forge", "aorus": "solar"]   // old brand keys → new
         theme = AppTheme(rawValue: migrate[raw] ?? raw) ?? .venom
+        appearance = AppAppearance(rawValue: UserDefaults.standard.string(forKey: "appAppearance") ?? "") ?? .auto
     }
+    /// Force the whole app's appearance (nil = follow macOS). Drives both the dyn() colours and SwiftUI's colorScheme.
+    func applyAppearance() { NSApplication.shared.appearance = appearance.nsAppearance }
 }
 
 /// The colour API used across the app. Names are historical ("razer*"); each now resolves to the
