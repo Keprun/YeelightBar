@@ -70,7 +70,9 @@ final class KeychronKeyboard {
         }
         func pid(_ d: IOHIDDevice) -> Int { (IOHIDDeviceGetProperty(d, kIOHIDProductIDKey as CFString) as? Int) ?? 0 }
         if let cable = set.first(where: { pid($0) == cablePID }) {
-            IOHIDDeviceOpen(cable, IOOptionBits(kIOHIDOptionsTypeNone))
+            guard IOHIDDeviceOpen(cable, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess else {
+                setLink(.none); return false   // cable present but couldn't open (busy) — not usable
+            }
             device = cable; effectArmed = false; setLink(.cable); return true
         }
         setLink(set.contains(where: { pid($0) == donglePID }) ? .dongle : .none)   // dongle present but unusable for RGB
@@ -93,7 +95,7 @@ final class KeychronKeyboard {
         let rc = buf.withUnsafeBufferPointer {
             IOHIDDeviceSetReport(d, kIOHIDReportTypeOutput, 0, $0.baseAddress!, reportLen)
         }
-        if rc != kIOReturnSuccess { device = nil; effectArmed = false; setLink(.none) }   // unplugged mid-send
+        if rc != kIOReturnSuccess { device = nil; effectArmed = false }   // drop & reopen next frame; removal callback handles link
     }
 
     /// Re-arm SOLID_COLOR on the next colour (call when an ambilight session starts).

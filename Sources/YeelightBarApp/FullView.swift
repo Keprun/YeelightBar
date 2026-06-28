@@ -350,6 +350,7 @@ struct FullView: View {
             if let s = lamp.screenSyncStatus ?? lamp.musicSyncStatus {
                 Text(LocalizedStringKey(s)).font(.callout).foregroundStyle(s.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
             }
+            if lamp.keyboardLink != .none { keyboardCard }   // always reachable when a Keychron is present
 
             if lamp.syncMode == .screen {
                 screenPreview
@@ -419,7 +420,6 @@ struct FullView: View {
                         slider("Насыщенность", $lamp.syncSaturation, 1.0...2.0, { String(format: "%.1f×", $0) })
                     }.padding(10)
                 }
-                if lamp.keyboardLink != .none { keyboardCard }
             }
             if lamp.syncMode == .music {
                 GroupBox("Музыка (системный звук)") {
