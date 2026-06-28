@@ -36,11 +36,16 @@ final class KeychronKeyboard {
     private(set) var model = "Keychron"
     private var lastModel = ""
 
+    /// Fired (on main) with battery % when the keyboard reports it (custom 0xA4 firmware command, cable).
+    var onBattery: ((Int) -> Void)?
+
     private let io = DispatchQueue(label: "yeelightbar.keychron")
     private var manager: IOHIDManager?
     private var device: IOHIDDevice?
     private var lastArm = Date.distantPast    // periodically re-assert the solid effect
     private var lastSend = Date.distantPast
+    private let inputBuf = UnsafeMutablePointer<UInt8>.allocate(capacity: 32)
+    private var batteryTimer: DispatchSourceTimer?
 
     init() { io.async { self.setupManager() } }
 
@@ -86,6 +91,18 @@ final class KeychronKeyboard {
             }
             device = kbd; lastArm = .distantPast
             let name = product(kbd); model = name.isEmpty ? "Keychron" : name
+            // listen for VIA responses on this device (we only act on the 0xA4 battery reply)
+            let ctx = Unmanaged.passUnretained(self).toOpaque()
+            IOHIDDeviceRegisterInputReportCallback(kbd, inputBuf, 32, { context, _, _, _, _, report, length in
+                guard let context, length >= 2, report[0] == 0xA4 else { return }   // [0xA4, pct, mv_lo, mv_hi]
+                let pct = Int(report[1])
+                if pct >= 1, pct <= 100 {
+                    let me = Unmanaged<KeychronKeyboard>.fromOpaque(context).takeUnretainedValue()
+                    DispatchQueue.main.async { me.onBattery?(pct) }
+                }
+            }, ctx)
+            IOHIDDeviceScheduleWithRunLoop(kbd, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+            startBatteryPoll()
             setLink(.cable); return true
         }
         setLink(.dongle)   // only a 2.4 GHz receiver present → RGB unavailable until cabled
@@ -136,6 +153,20 @@ final class KeychronKeyboard {
 
     /// Probe the link without sending (for the UI to show cable/dongle/none).
     func refresh() { io.async { self.refreshLink() } }
+
+    private func startBatteryPoll() {
+        batteryTimer?.cancel()
+        let t = DispatchSource.makeTimerSource(queue: io)
+        t.schedule(deadline: .now() + 1, repeating: 60)
+        t.setEventHandler { [weak self] in self?.readBattery() }
+        t.resume()
+        batteryTimer = t
+    }
+    /// Ask for battery % (custom 0xA4 firmware command); the firmware replies via the input callback.
+    private func readBattery() {
+        guard let d = device, link == .cable else { return }
+        send(d, [0xA4])
+    }
 
     static func rgbToHSV(_ rgb: Int) -> (h: UInt8, s: UInt8, v: UInt8) {
         let r = Double((rgb >> 16) & 0xFF) / 255, g = Double((rgb >> 8) & 0xFF) / 255, b = Double(rgb & 0xFF) / 255

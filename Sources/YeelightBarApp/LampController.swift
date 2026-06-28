@@ -46,6 +46,7 @@ final class LampController: ObservableObject {
     @Published var keyboardSyncOn = false
     @Published var keyboardLink: KeychronKeyboard.Link = .none
     @Published var keyboardModel = "Keychron"
+    @Published var keyboardBattery: Int?
     @Published var keyboardRegion: SyncRegion = .bottom { didSet { if screenSyncOn { pushKeyboardAux() } } }   // live
     @Published var keyboardDisplay: CGDirectDisplayID = CGMainDisplayID() { didSet { if screenSyncOn { restartSync() } } }   // re-capture
     @Published var keyboardColor = Color(rgb: 0x000000)
@@ -138,8 +139,12 @@ final class LampController: ObservableObject {
             guard let self else { return }
             self.keyboardLink = link
             self.keyboardModel = model
-            if link != .cable, self.keyboardSyncOn { self.setKeyboardSync(false) }   // cable gone → stop driving it
+            if link != .cable {
+                self.keyboardBattery = nil                                    // battery only readable over cable
+                if self.keyboardSyncOn { self.setKeyboardSync(false) }        // cable gone → stop driving it
+            }
         }
+        keyboard.onBattery = { [weak self] pct in self?.keyboardBattery = pct }
         keyboard.refresh()
         refreshScreenPermission()
         refreshDisplays()

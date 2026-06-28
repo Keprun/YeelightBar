@@ -248,6 +248,11 @@ struct FullView: View {
                         .frame(width: 8, height: 8)
                     Text(verbatim: lamp.keyboardModel).font(.callout)
                     Text(keyboardStatus).font(.caption2).foregroundStyle(Color.razerSecondary)
+                    if let bat = lamp.keyboardBattery {
+                        Label("\(bat)%", systemImage: bat <= 20 ? "battery.25" : "battery.100")
+                            .font(.caption2).labelStyle(.titleAndIcon)
+                            .foregroundStyle(bat <= 20 ? .orange : Color.razerSecondary)
+                    }
                     Spacer()
                     Toggle("", isOn: Binding(get: { lamp.keyboardSyncOn }, set: { lamp.setKeyboardSync($0) }))
                         .toggleStyle(.switch).labelsHidden()
