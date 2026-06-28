@@ -1,0 +1,45 @@
+<svg width="100%" viewBox="0 0 900 600" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>YeelightBar — Scenes</title>
+<desc>Scenes screen: ready-made scene presets and a custom "My scenes" grid the user can save, apply and delete.</desc>
+<defs><linearGradient id="winSc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171B17"/><stop offset="1" stop-color="#121512"/></linearGradient></defs>
+<rect x="1" y="1" width="898" height="598" rx="14" fill="url(#winSc)" stroke="#44D62C" stroke-opacity="0.22"/>
+<circle cx="24" cy="22" r="6" fill="#FF5F57"/><circle cx="44" cy="22" r="6" fill="#FEBC2E"/><circle cx="64" cy="22" r="6" fill="#28C840"/>
+<text x="84" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#EAF2E8">⚡ YEELIGHT</text>
+<text x="188" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#44D62C">BAR</text>
+<rect x="690" y="13" width="74" height="20" rx="10" fill="#1d211d" stroke="#2e332e"/><circle cx="704" cy="23" r="3.5" fill="#44D62C"/><text x="713" y="27" font-family="monospace" font-size="10" font-weight="700" fill="#8FA889">ONLINE</text>
+<path d="M790 17 a6 6 0 1 0 0.1 0 M790 12 v3 M790 29 v3 M778 22 h3 M799 22 h3" stroke="#44D62C" fill="none" stroke-width="2"/><circle cx="790" cy="22" r="3" fill="none" stroke="#44D62C" stroke-width="2"/>
+<line x1="1" y1="42" x2="899" y2="42" stroke="#44D62C" stroke-opacity="0.4"/>
+<rect x="1" y="43" width="212" height="556" fill="#11140F"/>
+<text x="22" y="86" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">☀  СВЕТ</text>
+<text x="22" y="126" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">▦  ЭФФЕКТЫ</text>
+<rect x="8" y="146" width="196" height="30" rx="4" fill="#44D62C" fill-opacity="0.14"/><rect x="8" y="146" width="3" height="30" fill="#44D62C"/>
+<text x="22" y="166" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#44D62C">◫  СЦЕНЫ</text>
+<text x="22" y="206" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◍  УСТРОЙСТВА</text>
+<text x="22" y="246" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">⚙  НАСТРОЙКИ</text>
+<text x="22" y="286" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">ⓘ  О ПРОГРАММЕ</text>
+
+<text x="238" y="80" font-family="Arial" font-size="16" font-weight="900" letter-spacing="1.2" fill="#EAF2E8">СЦЕНЫ</text>
+
+<text x="238" y="112" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ГОТОВЫЕ</text>
+<g font-family="Arial">
+<rect x="238" y="122" width="132" height="58" rx="9" fill="#2A1A12"/><rect x="238" y="122" width="132" height="58" rx="9" fill="none" stroke="#FF7A1A" stroke-opacity="0.5"/><circle cx="262" cy="151" r="9" fill="#FF7A1A"/><text x="280" y="148" font-size="12" font-weight="700" fill="#EAF2E8">Тёплый</text><text x="280" y="164" font-size="10" fill="#8FA889">2700K · 60%</text>
+<rect x="382" y="122" width="132" height="58" rx="9" fill="#10212B"/><rect x="382" y="122" width="132" height="58" rx="9" fill="none" stroke="#3FA9E0" stroke-opacity="0.5"/><circle cx="406" cy="151" r="9" fill="#7FD0FF"/><text x="424" y="148" font-size="12" font-weight="700" fill="#EAF2E8">Дневной</text><text x="424" y="164" font-size="10" fill="#8FA889">5000K · 100%</text>
+<rect x="526" y="122" width="132" height="58" rx="9" fill="#241226"/><rect x="526" y="122" width="132" height="58" rx="9" fill="none" stroke="#C44DFF" stroke-opacity="0.5"/><circle cx="550" cy="151" r="9" fill="#C44DFF"/><text x="568" y="148" font-size="12" font-weight="700" fill="#EAF2E8">Релакс</text><text x="568" y="164" font-size="10" fill="#8FA889">RGB · 35%</text>
+</g>
+
+<text x="238" y="218" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">МОИ СЦЕНЫ</text>
+<g font-family="Arial">
+<rect x="238" y="228" width="100" height="74" rx="9" fill="#1a1f1a" stroke="#2e332e"/><rect x="250" y="240" width="76" height="34" rx="6" fill="#FF3B30"/><text x="250" y="292" font-size="11" font-weight="700" fill="#EAF2E8">Кино</text>
+<rect x="350" y="228" width="100" height="74" rx="9" fill="#1a1f1a" stroke="#2e332e"/><rect x="362" y="240" width="76" height="34" rx="6" fill="#2EC28E"/><text x="362" y="292" font-size="11" font-weight="700" fill="#EAF2E8">Фокус</text>
+<rect x="462" y="228" width="100" height="74" rx="9" fill="#1a1f1a" stroke="#2e332e"/><rect x="474" y="240" width="76" height="34" rx="6" fill="#FFB23E"/><text x="474" y="292" font-size="11" font-weight="700" fill="#EAF2E8">Вечер</text>
+<rect x="574" y="228" width="100" height="74" rx="9" fill="#16201a" stroke="#44D62C" stroke-opacity="0.5" stroke-dasharray="4 3"/><text x="624" y="270" text-anchor="middle" font-size="26" font-weight="300" fill="#44D62C">+</text><text x="624" y="290" text-anchor="middle" font-size="10" fill="#8FA889">Добавить</text>
+</g>
+
+<path d="M249 326 L676 326 L676 408 L668 416 L238 416 L238 334 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="346" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">НОВАЯ СЦЕНА</text>
+<text x="252" y="372" font-family="Arial" font-size="11.5" fill="#8FA889">Сохрани текущий цвет лампы как сцену — потом применяй в один тап.</text>
+<rect x="252" y="382" width="240" height="26" rx="5" fill="#1a1f1a" stroke="#2e332e"/><text x="266" y="399" font-family="Arial" font-size="12" fill="#6f7d6a">Название…</text>
+<rect x="504" y="382" width="120" height="26" rx="5" fill="#44D62C"/><text x="564" y="399" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#0E110E">Сохранить</text>
+
+<text x="238" y="452" font-family="Arial" font-size="11" fill="#6f7d6a">Сцены применяются ко всей группе ламп и переживают перезапуск.</text>
+</svg>

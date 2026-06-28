@@ -21,9 +21,9 @@
 </p>
 
 <p align="center">
-  <i>A native macOS app for <b>Yeelight</b> LAN lamps — screen-sync ambilight (multi-display + per-segment<br>
-  addressable strips), music reactivity, and multi-lamp groups. Built for the <b>Screen Light Bar Pro</b>,<br>
-  it drives plain RGB strips &amp; bulbs too.</i>
+  <i>A native macOS app for <b>Yeelight</b> LAN lamps and <b>Keychron</b> keyboards — screen-sync ambilight<br>
+  (multi-display + per-segment addressable strips), music reactivity, scenes, and multi-lamp groups.<br>
+  Built for the <b>Screen Light Bar Pro</b>, it drives plain RGB strips &amp; bulbs too.</i>
 </p>
 
 <p align="center"><b>No cloud · no account · everything over your LAN.</b></p>
@@ -57,6 +57,14 @@
     <td align="center"><sub><b>Light &amp; ambient</b> — independent front-white &amp; ambient-RGB channels.</sub></td>
     <td align="center"><sub><b>Device groups</b> — multi-select lamps, controlled together.</sub></td>
   </tr>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/scenes.svg" alt="Scene editor"></td>
+    <td width="50%"><img src=".github/screenshots/about.svg" alt="About"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Scenes</b> — ready-made presets plus custom scenes you save, apply &amp; delete.</sub></td>
+    <td align="center"><sub><b>About</b> — version, features &amp; links to the project on GitHub.</sub></td>
+  </tr>
 </table>
 
 <p align="center">
@@ -83,7 +91,12 @@
 - **Keychron keyboard ambilight** — drives the RGB matrix of *any* Keychron QMK/VIA keyboard (over USB) from the
   same screen-sync or music engine, choosing which screen zone it samples. Model is auto-detected (matched by
   raw-HID, not a hard-coded PID), colour goes to both the per-key matrix and underglow channels, and nothing is
-  written to EEPROM (no wear).
+  written to EEPROM (no wear). Reads **battery %** over the cable on firmware that reports it.
+- **Scenes** — save the current lamp colour as a named scene and re-apply it in one tap; ready-made presets plus a
+  custom "My scenes" grid that persists across restarts.
+- **Quality-of-life** — an **eyedropper** to pick any on-screen colour as the ambient, **idle dimming** that fades
+  the lamps when you step away and restores the running effect when you're back, **launch at login**, a scene-cut
+  snap and letterbox (black-bar) skip for the ambilight.
 - **Gamer-brand themes** — Venom (green) · Crimson (red) · Forge (amber) · Solar (orange), each with full light +
   dark variants that follow the macOS day/night switch. Live in-app **theme**, **appearance** (Light / Dark / Auto)
   and **language** (7 languages) pickers in Settings.

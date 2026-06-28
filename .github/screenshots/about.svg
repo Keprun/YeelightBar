@@ -1,0 +1,50 @@
+<svg width="100%" viewBox="0 0 900 600" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>YeelightBar — About</title>
+<desc>About screen: animated wordmark, version 0.2.5 and MIT badges, tagline, description, a feature list, and a Project group linking to GitHub, releases and issues.</desc>
+<defs><linearGradient id="winA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171B17"/><stop offset="1" stop-color="#121512"/></linearGradient></defs>
+<rect x="1" y="1" width="898" height="598" rx="14" fill="url(#winA)" stroke="#44D62C" stroke-opacity="0.22"/>
+<circle cx="24" cy="22" r="6" fill="#FF5F57"/><circle cx="44" cy="22" r="6" fill="#FEBC2E"/><circle cx="64" cy="22" r="6" fill="#28C840"/>
+<text x="84" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#EAF2E8">⚡ YEELIGHT</text>
+<text x="188" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#44D62C">BAR</text>
+<rect x="690" y="13" width="74" height="20" rx="10" fill="#1d211d" stroke="#2e332e"/><circle cx="704" cy="23" r="3.5" fill="#44D62C"/><text x="713" y="27" font-family="monospace" font-size="10" font-weight="700" fill="#8FA889">ONLINE</text>
+<path d="M790 17 a6 6 0 1 0 0.1 0 M790 12 v3 M790 29 v3 M778 22 h3 M799 22 h3" stroke="#44D62C" fill="none" stroke-width="2"/><circle cx="790" cy="22" r="3" fill="none" stroke="#44D62C" stroke-width="2"/>
+<line x1="1" y1="42" x2="899" y2="42" stroke="#44D62C" stroke-opacity="0.4"/>
+<rect x="1" y="43" width="212" height="556" fill="#11140F"/>
+<text x="22" y="86" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">☀  СВЕТ</text>
+<text x="22" y="126" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">▦  ЭФФЕКТЫ</text>
+<text x="22" y="166" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◫  СЦЕНЫ</text>
+<text x="22" y="206" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◍  УСТРОЙСТВА</text>
+<text x="22" y="246" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">⚙  НАСТРОЙКИ</text>
+<rect x="8" y="266" width="196" height="30" rx="4" fill="#44D62C" fill-opacity="0.14"/><rect x="8" y="266" width="3" height="30" fill="#44D62C"/>
+<text x="22" y="286" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#44D62C">ⓘ  О ПРОГРАММЕ</text>
+
+<text x="238" y="84" font-family="Arial" font-size="22" font-weight="900" letter-spacing="2" fill="#EAF2E8">⚡ YEELIGHT</text>
+<text x="416" y="84" font-family="Arial" font-size="22" font-weight="900" letter-spacing="2" fill="#44D62C">BAR</text>
+<rect x="238" y="98" width="96" height="20" rx="5" fill="#1d211d" stroke="#2e332e"/><text x="252" y="112" font-family="monospace" font-size="10" font-weight="700" fill="#8FA889">Версия 0.2.5</text>
+<rect x="342" y="98" width="44" height="20" rx="5" fill="#1d211d" stroke="#2e332e"/><text x="352" y="112" font-family="monospace" font-size="10" font-weight="700" fill="#8FA889">MIT</text>
+<text x="238" y="138" font-family="Arial" font-size="13" fill="#8FA889">Амбилайт для Yeelight и Keychron на macOS</text>
+<text x="238" y="162" font-family="Arial" font-size="12.5" fill="#C7D3C2">Нативное menu-bar приложение: ловит цвет с экрана и в реальном времени</text>
+<text x="238" y="180" font-family="Arial" font-size="12.5" fill="#C7D3C2">красит под него лампы Yeelight и клавиатуру Keychron — плюс реакция на</text>
+<text x="238" y="198" font-family="Arial" font-size="12.5" fill="#C7D3C2">музыку, сцены и темы.</text>
+
+<path d="M249 220 L676 220 L676 348 L668 356 L238 356 L238 228 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="240" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ВОЗМОЖНОСТИ</text>
+<g font-family="Arial" font-size="12.5" fill="#C7D3C2">
+<text x="252" y="266" fill="#44D62C">🖵</text><text x="276" y="266">Амбилайт-синхронизация с экраном</text>
+<text x="252" y="290" fill="#44D62C">♪</text><text x="276" y="290">Реакция на музыку</text>
+<text x="252" y="314" fill="#44D62C">🎭</text><text x="276" y="314">Сцены, темы и 7 языков</text>
+<text x="252" y="338" fill="#44D62C">⌨</text><text x="276" y="338">Подсветка клавиатуры Keychron</text>
+</g>
+
+<path d="M249 370 L676 370 L676 506 L668 514 L238 514 L238 378 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="390" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ПРОЕКТ</text>
+<g font-family="Arial" font-size="12.5">
+<text x="252" y="416" fill="#44D62C">↗</text><text x="276" y="416" fill="#EAF2E8">Открыть на GitHub</text><text x="660" y="416" fill="#8FA889" text-anchor="end">↗</text>
+<line x1="252" y1="430" x2="662" y2="430" stroke="#2e332e" stroke-opacity="0.5"/>
+<text x="252" y="456" fill="#44D62C">⬚</text><text x="276" y="456" fill="#EAF2E8">Релизы</text><text x="660" y="456" fill="#8FA889" text-anchor="end">↗</text>
+<line x1="252" y1="470" x2="662" y2="470" stroke="#2e332e" stroke-opacity="0.5"/>
+<text x="252" y="496" fill="#44D62C">🐞</text><text x="276" y="496" fill="#EAF2E8">Сообщить о проблеме</text><text x="660" y="496" fill="#8FA889" text-anchor="end">↗</text>
+</g>
+
+<text x="238" y="544" font-family="Arial" font-size="10.5" fill="#6f7d6a">© 2026 · github.com/Keprun/YeelightBar · MIT License</text>
+</svg>

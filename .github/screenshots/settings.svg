@@ -1,11 +1,11 @@
 <svg width="100%" viewBox="0 0 900 600" role="img" xmlns="http://www.w3.org/2000/svg">
 <title>YeelightBar — Settings</title>
-<desc>Settings screen: theme picker (Venom/Crimson/Forge/Solar), Light/Dark/Auto appearance, language, and About with version 0.2.0.</desc>
+<desc>Settings screen: theme picker (Venom/Crimson/Forge/Solar), Light/Dark/Auto appearance, language, and General options (launch at login, idle dimming).</desc>
 <defs><linearGradient id="winS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171B17"/><stop offset="1" stop-color="#121512"/></linearGradient></defs>
 <rect x="1" y="1" width="898" height="598" rx="14" fill="url(#winS)" stroke="#44D62C" stroke-opacity="0.22"/>
 <circle cx="24" cy="22" r="6" fill="#FF5F57"/><circle cx="44" cy="22" r="6" fill="#FEBC2E"/><circle cx="64" cy="22" r="6" fill="#28C840"/>
-<text x="84" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#EAF2E8">YEELIGHT</text>
-<text x="171" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#44D62C">BAR</text>
+<text x="84" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#EAF2E8">⚡ YEELIGHT</text>
+<text x="188" y="27" font-family="Arial" font-size="13" font-weight="900" letter-spacing="2" fill="#44D62C">BAR</text>
 <rect x="690" y="13" width="74" height="20" rx="10" fill="#1d211d" stroke="#2e332e"/><circle cx="704" cy="23" r="3.5" fill="#44D62C"/><text x="713" y="27" font-family="monospace" font-size="10" font-weight="700" fill="#8FA889">ONLINE</text>
 <path d="M790 17 a6 6 0 1 0 0.1 0 M790 12 v3 M790 29 v3 M778 22 h3 M799 22 h3" stroke="#44D62C" fill="none" stroke-width="2"/><circle cx="790" cy="22" r="3" fill="none" stroke="#44D62C" stroke-width="2"/>
 <line x1="1" y1="42" x2="899" y2="42" stroke="#44D62C" stroke-opacity="0.4"/>
@@ -16,6 +16,7 @@
 <text x="22" y="206" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">◍  УСТРОЙСТВА</text>
 <rect x="8" y="226" width="196" height="30" rx="4" fill="#44D62C" fill-opacity="0.14"/><rect x="8" y="226" width="3" height="30" fill="#44D62C"/>
 <text x="22" y="246" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#44D62C">⚙  НАСТРОЙКИ</text>
+<text x="22" y="286" font-family="Arial" font-size="12" font-weight="700" letter-spacing="0.8" fill="#9AA892">ⓘ  О ПРОГРАММЕ</text>
 
 <text x="238" y="80" font-family="Arial" font-size="16" font-weight="900" letter-spacing="1.2" fill="#EAF2E8">НАСТРОЙКИ</text>
 
@@ -38,10 +39,12 @@
 <text x="252" y="310" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ЯЗЫК</text>
 <rect x="252" y="320" width="160" height="26" rx="5" fill="#1a1f1a" stroke="#2e332e"/><text x="266" y="337" font-family="Arial" font-size="12" fill="#C7D3C2">Русский</text><text x="396" y="337" font-family="Arial" font-size="10" fill="#8FA889">▾</text>
 
-<path d="M249 372 L676 372 L676 452 L668 460 L238 460 L238 380 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
-<text x="252" y="392" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">О ПРИЛОЖЕНИИ</text>
-<path d="M260 408 L255 418 L260 418 L257 426 L266 414 L261 414 Z" fill="#44D62C"/>
-<text x="276" y="418" font-family="Arial" font-size="13" font-weight="700" fill="#EAF2E8">YeelightBar</text>
-<rect x="588" y="406" width="78" height="20" rx="4" fill="#44D62C" fill-opacity="0.12" stroke="#44D62C" stroke-opacity="0.4"/><text x="627" y="420" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#44D62C">v0.2.0</text>
-<rect x="252" y="432" width="150" height="22" rx="5" fill="#2C312C" stroke="#3a423a"/><text x="327" y="447" text-anchor="middle" font-family="Arial" font-size="11" fill="#C7D3C2">↗ Открыть на GitHub</text>
+<path d="M249 372 L676 372 L676 470 L668 478 L238 478 L238 380 Z" fill="#232723" stroke="#44D62C" stroke-opacity="0.3"/>
+<text x="252" y="392" font-family="Arial" font-size="10" font-weight="900" letter-spacing="1.2" fill="#44D62C">ОСНОВНЫЕ</text>
+<text x="252" y="416" font-family="Arial" font-size="12" fill="#C7D3C2">Запускать при входе в систему</text>
+<rect x="610" y="406" width="40" height="22" rx="11" fill="#44D62C"/><circle cx="639" cy="417" r="8.5" fill="#0E110E"/>
+<text x="252" y="446" font-family="Arial" font-size="12" fill="#C7D3C2">Затемнять при простое</text>
+<rect x="610" y="436" width="40" height="22" rx="11" fill="#44D62C"/><circle cx="639" cy="447" r="8.5" fill="#0E110E"/>
+<rect x="252" y="462" width="138" height="22" rx="5" fill="#2C312C" stroke="#3a423a"/><text x="321" y="477" text-anchor="middle" font-family="Arial" font-size="11" fill="#C7D3C2">ⓘ О программе</text>
+<rect x="588" y="462" width="78" height="20" rx="4" fill="#44D62C" fill-opacity="0.12" stroke="#44D62C" stroke-opacity="0.4"/><text x="627" y="476" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#44D62C">v0.2.5</text>
 </svg>
