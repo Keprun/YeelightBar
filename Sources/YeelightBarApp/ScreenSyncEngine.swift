@@ -30,6 +30,10 @@ final class SyncOutput {
     private let targets: [(device: YeelightDevice, displayID: CGDirectDisplayID, region: SyncRegion, segments: Int, reversed: Bool)]
     private let io = DispatchQueue(label: "yeelightbar.syncoutput")
     private let music: [String: YeelightMusicSession]   // ip → music session (addressable per-segment targets)
+    // Derived once from the immutable targets — looked up per frame on the capture hot path, so cached.
+    private let allDisplayIDs: Set<CGDirectDisplayID>
+    private let regionsByDisplay: [CGDirectDisplayID: Set<SyncRegion>]
+    private let maxSegByDisplayRegion: [CGDirectDisplayID: [SyncRegion: Int]]
 
     init(_ ts: [SyncTarget]) {
         let local = YeelightMusicSession.localLANAddress()
@@ -41,16 +45,21 @@ final class SyncOutput {
             return (d, t.displayID, t.region, t.segments, t.reversed)
         }
         music = m
+        var ids: Set<CGDirectDisplayID> = []
+        var rbd: [CGDirectDisplayID: Set<SyncRegion>] = [:]
+        var msg: [CGDirectDisplayID: [SyncRegion: Int]] = [:]
+        for t in targets {
+            ids.insert(t.displayID)
+            rbd[t.displayID, default: []].insert(t.region)
+            msg[t.displayID, default: [:]][t.region] = max(msg[t.displayID]?[t.region] ?? 0, t.segments)
+        }
+        allDisplayIDs = ids; regionsByDisplay = rbd; maxSegByDisplayRegion = msg
     }
     var isEmpty: Bool { targets.isEmpty }
-    var displayIDs: Set<CGDirectDisplayID> { Set(targets.map { $0.displayID }) }
-    func regions(on display: CGDirectDisplayID) -> Set<SyncRegion> {
-        Set(targets.filter { $0.displayID == display }.map { $0.region })
-    }
+    var displayIDs: Set<CGDirectDisplayID> { allDisplayIDs }
+    func regions(on display: CGDirectDisplayID) -> Set<SyncRegion> { regionsByDisplay[display] ?? [] }
     /// Highest segment count among addressable targets on (display, region); 0 if none are segmented.
-    func maxSegments(on display: CGDirectDisplayID, _ region: SyncRegion) -> Int {
-        targets.filter { $0.displayID == display && $0.region == region }.map { $0.segments }.max() ?? 0
-    }
+    func maxSegments(on display: CGDirectDisplayID, _ region: SyncRegion) -> Int { maxSegByDisplayRegion[display]?[region] ?? 0 }
 
     func openStream() {
         io.async { self.targets.forEach { if $0.segments == 0 { _ = try? $0.device.openStream(timeout: 1.5) } } }

@@ -100,6 +100,8 @@ final class LampController: ObservableObject {
     private let io = DispatchQueue(label: "yeelightbar.control")
     private var controlGen = 0   // bumped on every control action; a stale blink-restore checks it before clobbering
     private var lastRegionSnap: [CGDirectDisplayID: [SyncRegion: Int]] = [:]   // de-dup screen-sync colour pushes
+    private var lastMusicRGB = -1   // de-dup the music swatch @Published write (mirror of the screen-sync guard)
+    private var lastKbdRGB = -1     // de-dup the keyboard swatch @Published write (music + aux both feed it)
     private var idleTimer: Timer?
     private var idleDimmed = false
     private var preIdleBright = 50.0
@@ -131,12 +133,19 @@ final class LampController: ObservableObject {
         music.onState = { [weak self] running, err in self?.musicSyncOn = running; self?.musicSyncStatus = err }
         music.onColor = { [weak self] rgb in
             guard let self else { return }
-            self.syncColor = Color(rgb: rgb)
-            if self.keyboardSyncOn { self.keyboard.setColor(rgb); self.keyboardColor = Color(rgb: rgb) }   // beat → keyboard
+            if rgb != self.lastMusicRGB { self.lastMusicRGB = rgb; self.syncColor = Color(rgb: rgb) }
+            if self.keyboardSyncOn {                                   // beat → keyboard
+                self.keyboard.setColor(rgb)                           // hardware call self-throttles; never gate it
+                if rgb != self.lastKbdRGB { self.lastKbdRGB = rgb; self.keyboardColor = Color(rgb: rgb) }
+            }
         }
         music.setSensitivity(musicSensitivity)
         music.setStyle(musicStyle)
-        sync.onAuxColor = { [weak self] rgb in self?.keyboard.setColor(rgb); self?.keyboardColor = Color(rgb: rgb) }
+        sync.onAuxColor = { [weak self] rgb in
+            guard let self else { return }
+            self.keyboard.setColor(rgb)
+            if rgb != self.lastKbdRGB { self.lastKbdRGB = rgb; self.keyboardColor = Color(rgb: rgb) }
+        }
         keyboard.onLink = { [weak self] link, model in
             guard let self else { return }
             self.keyboardLink = link
@@ -463,9 +472,6 @@ final class LampController: ObservableObject {
     /// Whole-device on indicator (reflects the primary): true if either channel is lit.
     var masterOn: Bool { power || ambientOn }
 
-    /// The colour channel's power method for the primary device.
-    private var colorPowerMethod: String { selectedIsBar ? "bg_set_power" : "set_power" }
-
     /// Every device currently in the control group, tagged bar vs plain strip/bulb.
     private func controlTargets() -> [(dev: YeelightDevice, isBar: Bool)] {
         devices.filter { groupIPs.contains($0.ip) }
@@ -586,10 +592,6 @@ final class LampController: ObservableObject {
         case .none:   break
         }
         idleEffect = .none
-    }
-    func pushAmbient() {
-        let rgb = ambientColor.rgbInt
-        fanOut { dev, isBar in self.send(dev, isBar ? "bg_set_rgb" : "set_rgb", [rgb & 0xFFFFFF, "smooth", 300]) }
     }
 
     /// Independent on/off for the colour channel (bar = bg channel, strip = its only channel).

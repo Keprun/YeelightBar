@@ -4,7 +4,6 @@ import YeelightKit
 
 struct MenuPanelView: View {
     @ObservedObject var lamp: LampController
-    @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.openWindow) private var openWindow
 
     static let ambientPresets: [Color] = [

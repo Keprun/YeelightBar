@@ -16,7 +16,7 @@ private func dyn(_ light: (CGFloat, CGFloat, CGFloat), _ dark: (CGFloat, CGFloat
 
 /// One brand's full palette. `accent` is the signature colour; the rest is the chrome.
 struct ThemePalette {
-    let accent, bg, bgTop, surface, surfaceHi, text, secondary: Color
+    let accent, bg, bgTop, surface, text, secondary: Color
 }
 
 enum AppTheme: String, CaseIterable, Identifiable {
@@ -39,7 +39,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 bg:         dyn((0.93, 0.965, 0.92), (0.039, 0.075, 0.043)),
                 bgTop:      dyn((0.975, 0.995, 0.965), (0.060, 0.110, 0.066)),
                 surface:    dyn((1.0, 1.0, 0.985), (0.071, 0.125, 0.078)),
-                surfaceHi:  dyn((0.89, 0.93, 0.875), (0.105, 0.175, 0.110)),
                 text:       dyn((0.08, 0.14, 0.07), (0.90, 0.98, 0.90)),
                 secondary:  dyn((0.33, 0.45, 0.32), (0.56, 0.73, 0.55)))
         case .crimson:  // blood red on a deep red-black chrome
@@ -48,7 +47,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 bg:         dyn((0.975, 0.93, 0.94), (0.090, 0.035, 0.046)),
                 bgTop:      dyn((0.99, 0.955, 0.965), (0.130, 0.052, 0.066)),
                 surface:    dyn((1.0, 0.985, 0.99), (0.145, 0.060, 0.075)),
-                surfaceHi:  dyn((0.94, 0.885, 0.90), (0.205, 0.090, 0.110)),
                 text:       dyn((0.14, 0.07, 0.085), (0.98, 0.91, 0.92)),
                 secondary:  dyn((0.45, 0.34, 0.36), (0.74, 0.57, 0.60)))
         case .forge:    // molten amber on a deep warm-black chrome
@@ -57,7 +55,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 bg:         dyn((0.975, 0.955, 0.90), (0.086, 0.066, 0.026)),
                 bgTop:      dyn((0.995, 0.985, 0.945), (0.122, 0.097, 0.042)),
                 surface:    dyn((1.0, 0.995, 0.955), (0.135, 0.108, 0.050)),
-                surfaceHi:  dyn((0.93, 0.91, 0.85), (0.195, 0.158, 0.072)),
                 text:       dyn((0.14, 0.11, 0.05), (0.98, 0.95, 0.87)),
                 secondary:  dyn((0.45, 0.40, 0.29), (0.74, 0.68, 0.52)))
         case .solar:    // orange flare on a deep orange-black chrome
@@ -66,7 +63,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
                 bg:         dyn((0.98, 0.95, 0.91), (0.098, 0.052, 0.022)),
                 bgTop:      dyn((0.995, 0.975, 0.93), (0.138, 0.078, 0.032)),
                 surface:    dyn((1.0, 0.99, 0.945), (0.152, 0.088, 0.038)),
-                surfaceHi:  dyn((0.94, 0.90, 0.84), (0.215, 0.125, 0.055)),
                 text:       dyn((0.14, 0.10, 0.05), (0.98, 0.93, 0.87)),
                 secondary:  dyn((0.46, 0.39, 0.30), (0.75, 0.64, 0.53)))
         }
@@ -111,10 +107,8 @@ extension Color {
     static var razerBG: Color        { pal.bg }
     static var razerBGTop: Color     { pal.bgTop }
     static var razerSurface: Color   { pal.surface }
-    static var razerSurfaceHi: Color { pal.surfaceHi }
     static var razerText: Color      { pal.text }
     static var razerSecondary: Color { pal.secondary }
-    static var razerGreenDim: Color  { pal.accent.opacity(0.55) }
     static var razerHairline: Color  { pal.accent.opacity(0.30) }
 }
 
