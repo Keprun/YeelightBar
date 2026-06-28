@@ -585,9 +585,10 @@ struct FullView: View {
             RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82))   // the "screen"
             ForEach(zones, id: \.region) { z in
                 let f = zoneFrac(z.region, z.band, z.length, z.center)
-                Rectangle().fill(colors[z.region] ?? Color.white.opacity(0.12))
+                Rectangle().fill(vivid(colors[z.region]))
                     .frame(width: w * f.w, height: h * f.h)
                     .position(x: w * (f.x + f.w / 2), y: h * (f.y + f.h / 2))
+                    .overlay(Rectangle().fill(.white.opacity(0.06)).frame(height: 1), alignment: .top)
             }
             VStack(spacing: 1) {
                 Text("\(info.index)").font(.title3).bold().foregroundStyle(.white)
@@ -624,6 +625,16 @@ struct FullView: View {
 
     private func displayShort(_ did: CGDirectDisplayID) -> String {
         lamp.displays.first(where: { $0.id == did })?.short ?? NSLocalizedString("экран", comment: "")
+    }
+
+    /// Preview colour for a monitor zone band: the live captured colour, brightened & saturated so even a
+    /// dark scene reads as a vivid hue; a soft theme tint when nothing is sampling yet (so it's never blank grey).
+    private func vivid(_ c: Color?) -> Color {
+        guard let c else { return Color.razerGreen.opacity(0.5) }
+        let ns = NSColor(c).usingColorSpace(.sRGB) ?? .gray
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ns.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: Double(h), saturation: Double(min(1, s * 1.2)), brightness: Double(max(0.5, b)))
     }
 
     private func zoneFrac(_ r: SyncRegion, _ b: CGFloat, _ len: CGFloat, _ c: CGFloat) -> (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
