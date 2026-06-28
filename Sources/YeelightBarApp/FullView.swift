@@ -3,7 +3,7 @@ import AppKit
 import YeelightKit
 
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
-    case control, effects, scenes, devices, settings
+    case control, effects, scenes, devices, settings, about
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -12,6 +12,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .scenes: return NSLocalizedString("Сцены", comment: "")
         case .devices: return NSLocalizedString("Устройства", comment: "")
         case .settings: return NSLocalizedString("Настройки", comment: "")
+        case .about: return NSLocalizedString("О программе", comment: "")
         }
     }
     var icon: String {
@@ -21,6 +22,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .scenes: return "theatermasks.fill"
         case .devices: return "lightbulb.fill"
         case .settings: return "gearshape.fill"
+        case .about: return "info.circle.fill"
         }
     }
 }
@@ -126,7 +128,7 @@ struct FullView: View {
     }
 
     @ViewBuilder private var detail: some View {
-        if !lamp.connected && section != .devices && section != .settings {
+        if !lamp.connected && section != .devices && section != .settings && section != .about {
             notConnected
         } else {
             switch section {
@@ -135,6 +137,7 @@ struct FullView: View {
             case .scenes: scenesSection
             case .devices: devicesSection
             case .settings: settingsSection
+            case .about: aboutSection
             }
         }
     }
@@ -216,25 +219,79 @@ struct FullView: View {
                     }
                 }
             }
-            GroupBox("О приложении") {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Image(systemName: "bolt.fill").foregroundStyle(Color.razerGreen)
-                        Text("YeelightBar").font(.callout).bold()
-                        Spacer()
-                        Text(String(format: NSLocalizedString("Версия %@", comment: ""), appVersion)).razerHUD()
-                    }
-                    Button {
-                        if let u = URL(string: "https://github.com/Keprun/YeelightBar") { NSWorkspace.shared.open(u) }
-                    } label: { Label("Открыть на GitHub", systemImage: "arrow.up.forward.square") }
-                        .buttonStyle(.bordered)
-                }
-            }
+            Button { section = .about } label: {
+                Label("О программе", systemImage: "info.circle.fill")
+            }.buttonStyle(.bordered)
         }
     }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
+    }
+
+    // MARK: About
+
+    private let repoURL = "https://github.com/Keprun/YeelightBar"
+
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                AnimatedWordmark(active: true, boltSize: 22, textSize: 22)
+                HStack(spacing: 8) {
+                    Text(String(format: NSLocalizedString("Версия %@", comment: ""), appVersion)).razerHUD()
+                    Text(verbatim: "MIT").razerHUD()
+                }
+                Text("Амбилайт для Yeelight и Keychron на macOS")
+                    .font(.callout).foregroundStyle(Color.razerSecondary)
+            }
+            Text("Нативное menu-bar приложение: ловит цвет с экрана и в реальном времени красит под него лампы Yeelight и клавиатуру Keychron — плюс реакция на музыку, сцены и темы.")
+                .font(.callout).foregroundStyle(Color.razerText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            GroupBox("Возможности") {
+                VStack(alignment: .leading, spacing: 9) {
+                    aboutFeature("display", "Амбилайт-синхронизация с экраном")
+                    aboutFeature("music.note", "Реакция на музыку")
+                    aboutFeature("theatermasks.fill", "Сцены, темы и 7 языков")
+                    aboutFeature("keyboard", "Подсветка клавиатуры Keychron")
+                }
+            }
+
+            GroupBox("Проект") {
+                VStack(spacing: 0) {
+                    aboutLink("Открыть на GitHub", "arrow.up.forward.square", repoURL)
+                    Divider().opacity(0.4)
+                    aboutLink("Релизы", "shippingbox.fill", repoURL + "/releases")
+                    Divider().opacity(0.4)
+                    aboutLink("Сообщить о проблеме", "ladybug.fill", repoURL + "/issues")
+                }
+            }
+
+            Text(verbatim: "© 2026 · github.com/Keprun/YeelightBar · MIT License")
+                .font(.caption2).foregroundStyle(Color.razerSecondary)
+        }
+    }
+
+    private func aboutFeature(_ icon: String, _ key: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).foregroundStyle(Color.razerGreen).frame(width: 18)
+            Text(LocalizedStringKey(key)).font(.callout)
+            Spacer()
+        }
+    }
+
+    private func aboutLink(_ key: String, _ icon: String, _ url: String) -> some View {
+        Button {
+            if let u = URL(string: url) { NSWorkspace.shared.open(u) }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: icon).foregroundStyle(Color.razerGreen).frame(width: 18)
+                Text(LocalizedStringKey(key)).font(.callout).foregroundStyle(Color.razerText)
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(Color.razerSecondary)
+            }
+            .contentShape(Rectangle()).padding(.vertical, 7)
+        }.buttonStyle(.plain)
     }
 
     private var keyboardCard: some View {

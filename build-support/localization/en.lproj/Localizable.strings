@@ -141,3 +141,16 @@
 "Сохранить" = "Save";
 "Затемнять при простое" = "Dim when idle";
 "Через %lld мин" = "After %lld min";
+
+/* About */
+"О программе" = "About";
+"Амбилайт для Yeelight и Keychron на macOS" = "Ambient lighting for Yeelight & Keychron on macOS";
+"Нативное menu-bar приложение: ловит цвет с экрана и в реальном времени красит под него лампы Yeelight и клавиатуру Keychron — плюс реакция на музыку, сцены и темы." = "A native menu-bar app: it samples your screen and lights Yeelight lamps and a Keychron keyboard to match in real time — plus music reactivity, scenes and themes.";
+"Возможности" = "Features";
+"Амбилайт-синхронизация с экраном" = "Screen ambient sync";
+"Реакция на музыку" = "Music reactivity";
+"Сцены, темы и 7 языков" = "Scenes, themes and 7 languages";
+"Подсветка клавиатуры Keychron" = "Keychron keyboard lighting";
+"Проект" = "Project";
+"Релизы" = "Releases";
+"Сообщить о проблеме" = "Report an issue";
