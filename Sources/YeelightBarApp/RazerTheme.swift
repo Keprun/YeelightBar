@@ -20,55 +20,55 @@ struct ThemePalette {
 }
 
 enum AppTheme: String, CaseIterable, Identifiable {
-    case razer, rog, tuf, aorus
+    case venom, crimson, forge, solar
     var id: String { rawValue }
     var displayName: String {
         switch self {
-        case .razer: return "Razer"
-        case .rog:   return "Asus ROG"
-        case .tuf:   return "Asus TUF"
-        case .aorus: return "Gigabyte Aorus"
+        case .venom:   return "Venom"
+        case .crimson: return "Crimson"
+        case .forge:   return "Forge"
+        case .solar:   return "Solar"
         }
     }
     var swatch: Color { palette.accent }
     var palette: ThemePalette {
         switch self {
-        case .razer:   // signature green
+        case .venom:    // toxic neon green on a deep green-black chrome
             return ThemePalette(
-                accent:     dyn((0.13, 0.55, 0.07), (0.267, 0.839, 0.173)),
-                bg:         dyn((0.945, 0.955, 0.935), (0.086, 0.098, 0.086)),
-                bgTop:      dyn((0.985, 0.99, 0.975), (0.118, 0.133, 0.118)),
-                surface:    dyn((1.0, 1.0, 0.995), (0.137, 0.153, 0.137)),
-                surfaceHi:  dyn((0.90, 0.92, 0.89), (0.184, 0.204, 0.184)),
-                text:       dyn((0.10, 0.12, 0.10), (0.95, 0.96, 0.95)),
-                secondary:  dyn((0.36, 0.42, 0.35), (0.64, 0.69, 0.64)))
-        case .rog:     // Republic of Gamers red
+                accent:     dyn((0.10, 0.52, 0.05), (0.30, 0.95, 0.25)),
+                bg:         dyn((0.93, 0.965, 0.92), (0.039, 0.075, 0.043)),
+                bgTop:      dyn((0.975, 0.995, 0.965), (0.060, 0.110, 0.066)),
+                surface:    dyn((1.0, 1.0, 0.985), (0.071, 0.125, 0.078)),
+                surfaceHi:  dyn((0.89, 0.93, 0.875), (0.105, 0.175, 0.110)),
+                text:       dyn((0.08, 0.14, 0.07), (0.90, 0.98, 0.90)),
+                secondary:  dyn((0.33, 0.45, 0.32), (0.56, 0.73, 0.55)))
+        case .crimson:  // blood red on a deep red-black chrome
             return ThemePalette(
-                accent:     dyn((0.80, 0.0, 0.13), (1.0, 0.16, 0.22)),
-                bg:         dyn((0.97, 0.945, 0.95), (0.098, 0.082, 0.086)),
-                bgTop:      dyn((0.99, 0.975, 0.98), (0.137, 0.110, 0.118)),
-                surface:    dyn((1.0, 0.99, 0.99), (0.157, 0.133, 0.137)),
-                surfaceHi:  dyn((0.93, 0.90, 0.91), (0.216, 0.180, 0.188)),
-                text:       dyn((0.12, 0.10, 0.10), (0.96, 0.95, 0.95)),
-                secondary:  dyn((0.42, 0.36, 0.37), (0.70, 0.64, 0.65)))
-        case .tuf:     // The Ultimate Force amber/yellow
+                accent:     dyn((0.78, 0.0, 0.12), (1.0, 0.22, 0.30)),
+                bg:         dyn((0.975, 0.93, 0.94), (0.090, 0.035, 0.046)),
+                bgTop:      dyn((0.99, 0.955, 0.965), (0.130, 0.052, 0.066)),
+                surface:    dyn((1.0, 0.985, 0.99), (0.145, 0.060, 0.075)),
+                surfaceHi:  dyn((0.94, 0.885, 0.90), (0.205, 0.090, 0.110)),
+                text:       dyn((0.14, 0.07, 0.085), (0.98, 0.91, 0.92)),
+                secondary:  dyn((0.45, 0.34, 0.36), (0.74, 0.57, 0.60)))
+        case .forge:    // molten amber on a deep warm-black chrome
             return ThemePalette(
-                accent:     dyn((0.62, 0.46, 0.0), (1.0, 0.78, 0.16)),
-                bg:         dyn((0.965, 0.96, 0.94), (0.094, 0.090, 0.078)),
-                bgTop:      dyn((0.99, 0.985, 0.97), (0.130, 0.124, 0.106)),
-                surface:    dyn((1.0, 0.995, 0.98), (0.149, 0.143, 0.122)),
-                surfaceHi:  dyn((0.92, 0.91, 0.88), (0.204, 0.196, 0.168)),
-                text:       dyn((0.12, 0.11, 0.08), (0.96, 0.95, 0.93)),
-                secondary:  dyn((0.42, 0.40, 0.34), (0.70, 0.68, 0.60)))
-        case .aorus:   // Aorus orange
+                accent:     dyn((0.60, 0.43, 0.0), (1.0, 0.74, 0.13)),
+                bg:         dyn((0.975, 0.955, 0.90), (0.086, 0.066, 0.026)),
+                bgTop:      dyn((0.995, 0.985, 0.945), (0.122, 0.097, 0.042)),
+                surface:    dyn((1.0, 0.995, 0.955), (0.135, 0.108, 0.050)),
+                surfaceHi:  dyn((0.93, 0.91, 0.85), (0.195, 0.158, 0.072)),
+                text:       dyn((0.14, 0.11, 0.05), (0.98, 0.95, 0.87)),
+                secondary:  dyn((0.45, 0.40, 0.29), (0.74, 0.68, 0.52)))
+        case .solar:    // orange flare on a deep orange-black chrome
             return ThemePalette(
-                accent:     dyn((0.80, 0.34, 0.0), (1.0, 0.45, 0.10)),
-                bg:         dyn((0.97, 0.955, 0.94), (0.098, 0.086, 0.075)),
-                bgTop:      dyn((0.99, 0.98, 0.965), (0.137, 0.118, 0.102)),
-                surface:    dyn((1.0, 0.99, 0.975), (0.157, 0.137, 0.118)),
-                surfaceHi:  dyn((0.93, 0.91, 0.88), (0.216, 0.188, 0.160)),
-                text:       dyn((0.12, 0.10, 0.08), (0.96, 0.94, 0.92)),
-                secondary:  dyn((0.42, 0.38, 0.34), (0.70, 0.66, 0.60)))
+                accent:     dyn((0.82, 0.34, 0.0), (1.0, 0.50, 0.12)),
+                bg:         dyn((0.98, 0.95, 0.91), (0.098, 0.052, 0.022)),
+                bgTop:      dyn((0.995, 0.975, 0.93), (0.138, 0.078, 0.032)),
+                surface:    dyn((1.0, 0.99, 0.945), (0.152, 0.088, 0.038)),
+                surfaceHi:  dyn((0.94, 0.90, 0.84), (0.215, 0.125, 0.055)),
+                text:       dyn((0.14, 0.10, 0.05), (0.98, 0.93, 0.87)),
+                secondary:  dyn((0.46, 0.39, 0.30), (0.75, 0.64, 0.53)))
         }
     }
 }
@@ -77,7 +77,11 @@ enum AppTheme: String, CaseIterable, Identifiable {
 final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     @Published var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: "appTheme") } }
-    private init() { theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "appTheme") ?? "") ?? .razer }
+    private init() {
+        let raw = UserDefaults.standard.string(forKey: "appTheme") ?? ""
+        let migrate = ["razer": "venom", "rog": "crimson", "tuf": "forge", "aorus": "solar"]   // old brand keys → new
+        theme = AppTheme(rawValue: migrate[raw] ?? raw) ?? .venom
+    }
 }
 
 /// The colour API used across the app. Names are historical ("razer*"); each now resolves to the
@@ -116,12 +120,16 @@ struct ChamferedRectangle: Shape {
 struct RazerBackground: View {
     @Environment(\.colorScheme) private var scheme
     var body: some View {
+        let dark = scheme == .dark
         ZStack {
             LinearGradient(colors: [.razerBGTop, .razerBG], startPoint: .top, endPoint: .bottom)
-            RadialGradient(colors: [Color.razerGreen.opacity(scheme == .dark ? 0.08 : 0.05), .clear],
-                           center: .top, startRadius: 0, endRadius: 460)
+            // two accent auras (theme-coloured) for depth — a strong top-left glow + a soft bottom-right one
+            RadialGradient(colors: [Color.razerGreen.opacity(dark ? 0.18 : 0.06), .clear],
+                           center: .topLeading, startRadius: 0, endRadius: 540)
+            RadialGradient(colors: [Color.razerGreen.opacity(dark ? 0.10 : 0.03), .clear],
+                           center: .bottomTrailing, startRadius: 0, endRadius: 480)
             Canvas { ctx, size in
-                let op = scheme == .dark ? 0.16 : 0.05
+                let op = dark ? 0.16 : 0.05
                 var y: CGFloat = 0
                 while y < size.height {
                     ctx.stroke(Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: size.width, y: y)) },
