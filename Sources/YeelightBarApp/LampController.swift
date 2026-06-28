@@ -103,6 +103,8 @@ final class LampController: ObservableObject {
     private var idleTimer: Timer?
     private var idleDimmed = false
     private var preIdleBright = 50.0
+    private enum IdleEffect { case none, screen, music }
+    private var idleEffect: IdleEffect = .none   // effect paused by the dim, resumed on wake
     private let sync = ScreenSyncEngine()
     private let music = MusicSyncEngine()
     let keyboard = KeychronKeyboard()
@@ -555,13 +557,14 @@ final class LampController: ObservableObject {
         let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
         if idle >= idleMinutes * 60 {
             if !idleDimmed, connected { enterIdleDim() }
-        } else if idleDimmed {
+        } else if idleDimmed, connected {   // only restore a reachable lamp; otherwise wait for reconnect
             restoreFromIdle()
         }
     }
     private func enterIdleDim() {
         idleDimmed = true
         preIdleBright = brightness
+        idleEffect = screenSyncOn ? .screen : (musicSyncOn ? .music : .none)   // remember to resume on wake
         if screenSyncOn { stopScreenSync() }      // a live effect would fight the dim
         if musicSyncOn { stopMusicSync() }
         fanOut { dev, isBar in
@@ -577,6 +580,12 @@ final class LampController: ObservableObject {
             self.send(dev, "set_bright", [v, "smooth", 800])
             if isBar { self.send(dev, "bg_set_bright", [v, "smooth", 800]) }
         }
+        switch idleEffect {   // the dim paused the effect — bring it back the way the user left it
+        case .screen: toggleScreenSync()
+        case .music:  toggleMusicSync()
+        case .none:   break
+        }
+        idleEffect = .none
     }
     func pushAmbient() {
         let rgb = ambientColor.rgbInt

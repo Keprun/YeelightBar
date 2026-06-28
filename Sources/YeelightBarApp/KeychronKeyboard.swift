@@ -49,6 +49,11 @@ final class KeychronKeyboard {
 
     init() { io.async { self.setupManager() } }
 
+    deinit {
+        io.sync { self.closeDevice() }   // clears the run-loop registration before the buffer dies
+        inputBuf.deallocate()
+    }
+
     // MARK: - Device discovery
 
     private func setupManager() {
@@ -60,7 +65,7 @@ final class KeychronKeyboard {
         let cb: IOHIDDeviceCallback = { context, _, _, _ in
             guard let context else { return }
             let me = Unmanaged<KeychronKeyboard>.fromOpaque(context).takeUnretainedValue()
-            me.io.async { me.device = nil; me.lastArm = .distantPast; me.refreshLink() }
+            me.io.async { me.closeDevice(); me.refreshLink() }
         }
         IOHIDManagerRegisterDeviceMatchingCallback(mgr, cb, ctx)
         IOHIDManagerRegisterDeviceRemovalCallback(mgr, cb, ctx)
@@ -109,6 +114,20 @@ final class KeychronKeyboard {
         return false
     }
 
+    /// Tear down the cached device, symmetric with ensureOpen()'s setup; both run on `io`. Clears the
+    /// input-report callback and run-loop schedule (so IOKit stops touching inputBuf) before dropping it,
+    /// so a send failure / unplug / replug can't strand an orphaned registration on a stale device.
+    private func closeDevice() {
+        batteryTimer?.cancel(); batteryTimer = nil
+        if let d = device {
+            IOHIDDeviceRegisterInputReportCallback(d, inputBuf, 32, nil, nil)
+            IOHIDDeviceUnscheduleFromRunLoop(d, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+            IOHIDDeviceClose(d, IOOptionBits(kIOHIDOptionsTypeNone))
+        }
+        device = nil
+        lastArm = .distantPast
+    }
+
     private func refreshLink() { _ = ensureOpen() }
 
     private func setLink(_ l: Link) {
@@ -126,7 +145,7 @@ final class KeychronKeyboard {
         let rc = buf.withUnsafeBufferPointer {
             IOHIDDeviceSetReport(d, kIOHIDReportTypeOutput, 0, $0.baseAddress!, reportLen)
         }
-        if rc != kIOReturnSuccess { device = nil; lastArm = .distantPast }   // drop & reopen next frame; removal callback handles link
+        if rc != kIOReturnSuccess { closeDevice() }   // drop & reopen next frame; removal callback handles link
     }
 
     /// Re-arm SOLID_COLOR on the next colour (call when an ambilight session starts).
