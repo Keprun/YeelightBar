@@ -1,10 +1,11 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Razer Synapse-inspired palette & components (adapts to macOS Light / Dark / Auto)
+// MARK: - Gamer-brand themes (Razer / Asus ROG / Asus TUF / Gigabyte Aorus)
+// Each palette has a Light AND Dark value per colour, so every theme adapts to the macOS
+// appearance (incl. the time-of-day "Auto" switch) — dark at night, light by day.
 
-/// A colour with separate Light and Dark values — follows the system appearance (incl. the
-/// time-of-day "Auto" switch), so the app goes dark at night and light by day.
+/// A colour with separate Light and Dark values — follows the system appearance.
 private func dyn(_ light: (CGFloat, CGFloat, CGFloat), _ dark: (CGFloat, CGFloat, CGFloat)) -> Color {
     Color(nsColor: NSColor(name: nil) { ap in
         let isDark = ap.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -13,17 +14,85 @@ private func dyn(_ light: (CGFloat, CGFloat, CGFloat), _ dark: (CGFloat, CGFloat
     })
 }
 
+/// One brand's full palette. `accent` is the signature colour; the rest is the chrome.
+struct ThemePalette {
+    let accent, bg, bgTop, surface, surfaceHi, text, secondary: Color
+}
+
+enum AppTheme: String, CaseIterable, Identifiable {
+    case razer, rog, tuf, aorus
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .razer: return "Razer"
+        case .rog:   return "Asus ROG"
+        case .tuf:   return "Asus TUF"
+        case .aorus: return "Gigabyte Aorus"
+        }
+    }
+    var swatch: Color { palette.accent }
+    var palette: ThemePalette {
+        switch self {
+        case .razer:   // signature green
+            return ThemePalette(
+                accent:     dyn((0.13, 0.55, 0.07), (0.267, 0.839, 0.173)),
+                bg:         dyn((0.945, 0.955, 0.935), (0.086, 0.098, 0.086)),
+                bgTop:      dyn((0.985, 0.99, 0.975), (0.118, 0.133, 0.118)),
+                surface:    dyn((1.0, 1.0, 0.995), (0.137, 0.153, 0.137)),
+                surfaceHi:  dyn((0.90, 0.92, 0.89), (0.184, 0.204, 0.184)),
+                text:       dyn((0.10, 0.12, 0.10), (0.95, 0.96, 0.95)),
+                secondary:  dyn((0.36, 0.42, 0.35), (0.64, 0.69, 0.64)))
+        case .rog:     // Republic of Gamers red
+            return ThemePalette(
+                accent:     dyn((0.80, 0.0, 0.13), (1.0, 0.16, 0.22)),
+                bg:         dyn((0.97, 0.945, 0.95), (0.098, 0.082, 0.086)),
+                bgTop:      dyn((0.99, 0.975, 0.98), (0.137, 0.110, 0.118)),
+                surface:    dyn((1.0, 0.99, 0.99), (0.157, 0.133, 0.137)),
+                surfaceHi:  dyn((0.93, 0.90, 0.91), (0.216, 0.180, 0.188)),
+                text:       dyn((0.12, 0.10, 0.10), (0.96, 0.95, 0.95)),
+                secondary:  dyn((0.42, 0.36, 0.37), (0.70, 0.64, 0.65)))
+        case .tuf:     // The Ultimate Force amber/yellow
+            return ThemePalette(
+                accent:     dyn((0.62, 0.46, 0.0), (1.0, 0.78, 0.16)),
+                bg:         dyn((0.965, 0.96, 0.94), (0.094, 0.090, 0.078)),
+                bgTop:      dyn((0.99, 0.985, 0.97), (0.130, 0.124, 0.106)),
+                surface:    dyn((1.0, 0.995, 0.98), (0.149, 0.143, 0.122)),
+                surfaceHi:  dyn((0.92, 0.91, 0.88), (0.204, 0.196, 0.168)),
+                text:       dyn((0.12, 0.11, 0.08), (0.96, 0.95, 0.93)),
+                secondary:  dyn((0.42, 0.40, 0.34), (0.70, 0.68, 0.60)))
+        case .aorus:   // Aorus orange
+            return ThemePalette(
+                accent:     dyn((0.80, 0.34, 0.0), (1.0, 0.45, 0.10)),
+                bg:         dyn((0.97, 0.955, 0.94), (0.098, 0.086, 0.075)),
+                bgTop:      dyn((0.99, 0.98, 0.965), (0.137, 0.118, 0.102)),
+                surface:    dyn((1.0, 0.99, 0.975), (0.157, 0.137, 0.118)),
+                surfaceHi:  dyn((0.93, 0.91, 0.88), (0.216, 0.188, 0.160)),
+                text:       dyn((0.12, 0.10, 0.08), (0.96, 0.94, 0.92)),
+                secondary:  dyn((0.42, 0.38, 0.34), (0.70, 0.66, 0.60)))
+        }
+    }
+}
+
+/// Holds the selected theme (persisted). Views observe it so a change re-themes the app live.
+final class ThemeManager: ObservableObject {
+    static let shared = ThemeManager()
+    @Published var theme: AppTheme { didSet { UserDefaults.standard.set(theme.rawValue, forKey: "appTheme") } }
+    private init() { theme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "appTheme") ?? "") ?? .razer }
+}
+
+/// The colour API used across the app. Names are historical ("razer*"); each now resolves to the
+/// SELECTED theme's palette, still dynamic for day/night.
 extension Color {
-    // signature green — bright on dark, a deeper readable green on light surfaces
-    static let razerGreen     = dyn((0.16, 0.62, 0.09), (0.267, 0.839, 0.173))
-    static let razerBG        = dyn((0.945, 0.955, 0.935), (0.086, 0.098, 0.086))
-    static let razerBGTop     = dyn((0.985, 0.99, 0.975), (0.118, 0.133, 0.118))
-    static let razerSurface   = dyn((1.0, 1.0, 0.995),   (0.137, 0.153, 0.137))
-    static let razerSurfaceHi = dyn((0.90, 0.92, 0.89),  (0.184, 0.204, 0.184))
-    static let razerText      = dyn((0.10, 0.12, 0.10),  (0.95, 0.95, 0.95))
-    static let razerSecondary = dyn((0.36, 0.42, 0.35),  (0.64, 0.69, 0.64))
-    static let razerGreenDim  = Color.razerGreen.opacity(0.55)
-    static let razerHairline  = Color.razerGreen.opacity(0.30)
+    private static var pal: ThemePalette { ThemeManager.shared.theme.palette }
+    static var razerGreen: Color     { pal.accent }
+    static var razerBG: Color        { pal.bg }
+    static var razerBGTop: Color     { pal.bgTop }
+    static var razerSurface: Color   { pal.surface }
+    static var razerSurfaceHi: Color { pal.surfaceHi }
+    static var razerText: Color      { pal.text }
+    static var razerSecondary: Color { pal.secondary }
+    static var razerGreenDim: Color  { pal.accent.opacity(0.55) }
+    static var razerHairline: Color  { pal.accent.opacity(0.30) }
 }
 
 /// Razer's angular panel geometry: a rect with the top-left and bottom-right corners sliced off.

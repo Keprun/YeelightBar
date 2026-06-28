@@ -28,6 +28,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
 /// Full native window — sidebar + spacious detail pane.
 struct FullView: View {
     @ObservedObject var lamp: LampController
+    @ObservedObject private var themeManager = ThemeManager.shared
     @State private var section: AppSection = .control
     @State private var assignTarget: CGDirectDisplayID?
     @State private var langChoice = AppLanguage.current
@@ -151,6 +152,21 @@ struct FullView: View {
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Настройки").razerHeading(16)
+            GroupBox("Тема") {
+                HStack(spacing: 10) {
+                    ForEach(AppTheme.allCases) { t in
+                        Button { themeManager.theme = t } label: {
+                            VStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 7).fill(t.swatch).frame(height: 36)
+                                    .overlay(RoundedRectangle(cornerRadius: 7)
+                                        .stroke(Color.razerText, lineWidth: themeManager.theme == t ? 2.5 : 0))
+                                Text(verbatim: t.displayName).font(.caption2).lineLimit(1)
+                                    .foregroundStyle(themeManager.theme == t ? Color.razerText : Color.razerSecondary)
+                            }
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
             GroupBox("Язык") {
                 VStack(alignment: .leading, spacing: 10) {
                     Picker("Язык приложения", selection: $langChoice) {
