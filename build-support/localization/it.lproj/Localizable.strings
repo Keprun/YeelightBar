@@ -155,3 +155,7 @@ nella scheda «Dispositivi»";
 "Проект" = "Progetto";
 "Релизы" = "Versioni";
 "Сообщить о проблеме" = "Segnala un problema";
+
+/* Updates (Sparkle) */
+"Проверить обновления…" = "Controlla aggiornamenti…";
+"Обновляться автоматически" = "Aggiorna automaticamente";

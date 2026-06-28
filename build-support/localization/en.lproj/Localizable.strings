@@ -154,3 +154,7 @@
 "Проект" = "Project";
 "Релизы" = "Releases";
 "Сообщить о проблеме" = "Report an issue";
+
+/* Updates (Sparkle) */
+"Проверить обновления…" = "Check for Updates…";
+"Обновляться автоматически" = "Update automatically";

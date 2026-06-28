@@ -155,3 +155,7 @@ dans l'onglet «Appareils»";
 "Проект" = "Projet";
 "Релизы" = "Versions";
 "Сообщить о проблеме" = "Signaler un problème";
+
+/* Updates (Sparkle) */
+"Проверить обновления…" = "Rechercher des mises à jour…";
+"Обновляться автоматически" = "Mettre à jour automatiquement";

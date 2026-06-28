@@ -30,6 +30,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
 /// Full native window — sidebar + spacious detail pane.
 struct FullView: View {
     @ObservedObject var lamp: LampController
+    @ObservedObject var updater: UpdaterViewModel
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var section: AppSection = .control
     @State private var assignTarget: CGDirectDisplayID?
@@ -217,6 +218,10 @@ struct FullView: View {
                         Stepper("Через \(Int(lamp.idleMinutes)) мин", value: $lamp.idleMinutes, in: 1...60)
                             .font(.callout).foregroundStyle(Color.razerSecondary)
                     }
+                    Toggle("Обновляться автоматически", isOn: Binding(
+                        get: { updater.automaticallyChecksForUpdates },
+                        set: { updater.automaticallyChecksForUpdates = $0 }
+                    )).toggleStyle(.switch)
                 }
             }
             Button { section = .about } label: {
@@ -240,6 +245,9 @@ struct FullView: View {
                 HStack(spacing: 8) {
                     Text(String(format: NSLocalizedString("Версия %@", comment: ""), appVersion)).razerHUD()
                     Text(verbatim: "MIT").razerHUD()
+                    Button("Проверить обновления…") { updater.checkForUpdates() }
+                        .buttonStyle(.bordered).controlSize(.small)
+                        .disabled(!updater.canCheckForUpdates)
                 }
                 Text("Амбилайт для Yeelight и Keychron на macOS")
                     .font(.callout).foregroundStyle(Color.razerSecondary)

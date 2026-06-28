@@ -10,8 +10,9 @@ APP="$PKG/build/YeelightBar.app"
 
 # Ad-hoc re-sign for distribution: the local self-signed dev cert isn't trusted on other
 # Macs, so ship an ad-hoc signature (runnable everywhere; users right-click → Open once,
-# since the app isn't notarized — no paid Apple Developer ID).
-codesign --force --sign - "$APP"
+# since the app isn't notarized — no paid Apple Developer ID). --deep also signs the embedded
+# Sparkle.framework and its XPC helpers.
+codesign --force --deep --sign - "$APP"
 
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/YeelightBar.app"
@@ -24,3 +25,10 @@ rm -rf "$STAGE"
 
 echo "DMG:  $DMG"
 echo -n "SHA256: "; shasum -a 256 "$DMG" | awk '{print $1}'
+
+# Refresh appcast.xml for in-app auto-update; skips gracefully if Sparkle's sign_update isn't around.
+if bash "$PKG/scripts/appcast.sh" "$VER" 2>/dev/null; then
+  echo "appcast: updated for $VER — commit appcast.xml after the release is published"
+else
+  echo "appcast: skipped (sign_update unavailable) — run scripts/appcast.sh $VER after installing Sparkle tools"
+fi

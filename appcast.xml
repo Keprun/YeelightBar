@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>YeelightBar</title>
+    <link>https://raw.githubusercontent.com/Keprun/YeelightBar/main/appcast.xml</link>
+    <description>YeelightBar updates</description>
+    <language>en</language>
+    <item>
+      <title>YeelightBar 0.2.6</title>
+      <pubDate>Sun, 28 Jun 2026 10:47:07 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>0.2.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <link>https://github.com/Keprun/YeelightBar/releases/tag/v0.2.6</link>
+      <enclosure url="https://github.com/Keprun/YeelightBar/releases/download/v0.2.6/YeelightBar-0.2.6.dmg" sparkle:edSignature="xcQQ/oVTKWCvXksoUMgSqaayU7e9S9LDIRsL9DkFIWq7HfZjPdxPoYyOpnDewfoIMAwUYsym2DrKE7p4UEKEDg==" length="3149270" type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>

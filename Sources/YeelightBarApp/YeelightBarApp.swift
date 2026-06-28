@@ -4,15 +4,22 @@ import AppKit
 @main
 struct YeelightBarApp: App {
     @StateObject private var lamp = LampController()
+    @StateObject private var updater = UpdaterViewModel()
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         // Full resizable app window (Dock icon, proper configuration surface).
         Window("YeelightBar", id: "main") {
-            FullView(lamp: lamp)
+            FullView(lamp: lamp, updater: updater)
         }
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Проверить обновления…") { updater.checkForUpdates() }
+                    .disabled(!updater.canCheckForUpdates)
+            }
+        }
 
         // Mini quick-controls in the status bar — custom light-bar glyph, not the stock SF Symbol.
         MenuBarExtra {
