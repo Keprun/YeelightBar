@@ -99,6 +99,7 @@ struct FullView: View {
         }
         .frame(height: 42)
         .frame(maxWidth: .infinity)
+        .background(WindowDragArea())   // drag the window by the title bar (frontmost background, behind the buttons)
         .background(LinearGradient(colors: [.razerBGTop, .razerBG], startPoint: .top, endPoint: .bottom))
         .overlay(alignment: .bottom) { Rectangle().fill(Color.razerGreen.opacity(0.45)).frame(height: 1) }
     }
@@ -809,8 +810,19 @@ func relaunchApp() {
     }
 }
 
+/// A transparent backing that drags the window only from this region (the title bar). Because the
+/// window is no longer movable-by-background, interactive controls (sliders, toggles) elsewhere keep
+/// their own drags; only an empty title-bar spot starts a window move. Buttons on top still win the hit.
+private struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+    private final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+    }
+}
+
 /// Turns the host NSWindow into a borderless, full-bleed custom chrome: transparent title bar,
-/// no system title, draggable by its background, Razer-dark backing colour.
+/// no system title, draggable by its title bar (see WindowDragArea), Razer-dark backing colour.
 private struct WindowConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
@@ -818,7 +830,7 @@ private struct WindowConfigurator: NSViewRepresentable {
             guard let w = v.window else { return }
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
-            w.isMovableByWindowBackground = true
+            w.isMovableByWindowBackground = false   // else SwiftUI sliders/toggles drag the whole window
             w.styleMask.insert(.fullSizeContentView)
         }
         return v
