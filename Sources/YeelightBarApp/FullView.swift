@@ -33,6 +33,7 @@ struct FullView: View {
     @State private var assignTarget: CGDirectDisplayID?
     @State private var langChoice = AppLanguage.current
     @State private var langChanged = false
+    @State private var launchAtLogin = LaunchAtLogin.isEnabled
 
     var body: some View {
         VStack(spacing: 0) {
@@ -201,6 +202,12 @@ struct FullView: View {
                         }
                     }
                 }
+            }
+            GroupBox("Основные") {
+                Toggle("Запускать при входе в систему", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { v in LaunchAtLogin.isEnabled = v; launchAtLogin = LaunchAtLogin.isEnabled }
+                )).toggleStyle(.switch)
             }
             GroupBox("О приложении") {
                 VStack(alignment: .leading, spacing: 10) {
