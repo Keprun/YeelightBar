@@ -8,14 +8,16 @@ VER="${1:-0.1.0}"
 bash "$PKG/scripts/bundle.sh"
 APP="$PKG/build/YeelightBar.app"
 
-# Ad-hoc re-sign for distribution: the local self-signed dev cert isn't trusted on other
-# Macs, so ship an ad-hoc signature (runnable everywhere; users right-click → Open once,
-# since the app isn't notarized — no paid Apple Developer ID). --deep also signs the embedded
-# Sparkle.framework and its XPC helpers.
-codesign --force --deep --sign - "$APP"
-
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/YeelightBar.app"
+
+# Ad-hoc re-sign ONLY the distribution copy: the local self-signed dev cert isn't trusted on other
+# Macs, so the DMG ships an ad-hoc signature (runnable everywhere; users right-click → Open once,
+# since the app isn't notarized — no paid Apple Developer ID). --deep also signs the embedded
+# Sparkle.framework and its XPC helpers. build/YeelightBar.app stays dev-signed, so the LOCAL install
+# keeps a stable code-signing identity and macOS doesn't re-prompt for Screen Recording every rebuild.
+codesign --force --deep --sign - "$STAGE/YeelightBar.app"
+
 ln -s /Applications "$STAGE/Applications"
 mkdir -p "$PKG/dist"
 DMG="$PKG/dist/YeelightBar-$VER.dmg"
