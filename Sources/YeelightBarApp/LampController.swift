@@ -221,10 +221,15 @@ final class LampController: ObservableObject {
         }
     }
 
-    /// Blink a lamp so the user can spot which physical device a row is. Uses `set_scene "cf"`,
-    /// which turns the lamp ON into a colour flow even when it is currently off (plain `start_cf`
-    /// does nothing on an off lamp), then restores the prior power state.
+    /// Blink a lamp so the user can spot which physical device a row is. Uses `set_scene "cf"`, which
+    /// turns the lamp ON into a colour flow even when it is currently off (plain `start_cf` does nothing
+    /// on an off lamp). Its action `0` recovers to the state *before the flow* — but `set_scene` already
+    /// turned an off lamp ON first, so action 0 leaves an off lamp glowing; only an off lamp needs an
+    /// explicit turn-off afterward (an on lamp is correctly recovered by action 0 → no extra command).
+    /// Blocked while a scan is opening connections, so the blink never overlaps the scan's probes — that
+    /// pile-up (scan + 12 s poll + blink, atop another client like Home Assistant) is what wedges a lamp.
     func identify(_ d: DiscoveredDevice) {
+        guard !isSearching else { return }
         let isBar = d.support.contains("bg_set_rgb") || d.model == "lamp15"
         let flow = isBar
             ? "400,2,4000,100,400,2,4000,1,400,2,4000,100,400,2,4000,1"               // bar: warm-white CT blink
@@ -232,14 +237,14 @@ final class LampController: ObservableObject {
         let dev = YeelightDevice(ip: d.ip, tcpPort: d.port)
         controlGen += 1
         let myGen = controlGen
-        // Serialize on `io` so the blink never races group power / state reads on the bar.
         io.async { [weak self] in
             let wasOn = ((try? dev.properties(["power"]))?.first == "on")
             _ = try? dev.control("set_scene", ["cf", 8, 0, flow])
+            guard !wasOn else { return }   // action 0 already restored an on lamp; nothing more to do
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 3_600_000_000)   // let the ~3.2 s flow finish
-                guard let self, self.controlGen == myGen else { return }  // user changed power meanwhile → keep it
-                self.io.async { _ = try? dev.power(wasOn) }              // restore the prior power state
+                guard let self, self.controlGen == myGen else { return }   // user toggled power meanwhile → keep it
+                self.io.async { _ = try? dev.power(false) }                 // was off → turn it back off
             }
         }
     }
@@ -376,7 +381,7 @@ final class LampController: ObservableObject {
     /// Periodic liveness probe. Only counts failures toward "lost" when the lamp is supposed to
     /// be ON — a deliberately powered-off lamp that also drops off WiFi must not trigger reconnect.
     private func tickPoll() {
-        guard let device, connected else { return }
+        guard let device, connected, !isSearching else { return }   // don't probe mid-scan — overlapping connections wedge the lamp
         let expectOn = power
         let epoch = pollEpoch
         io.async {

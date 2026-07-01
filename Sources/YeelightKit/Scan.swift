@@ -10,16 +10,20 @@ extension YeelightDiscovery {
     /// fall back to an active subnet scan if SSDP is silent (e.g. flood-lockout).
     public static func auto(timeout: Double = 3.0) -> [DiscoveredDevice] {
         var byIP: [String: DiscoveredDevice] = [:]
-        for d in discover(timeout: timeout) { byIP[d.ip] = d }     // SSDP: rich info (id/model/fw)
-        for d in scan() where byIP[d.ip] == nil { byIP[d.ip] = d } // active scan: fill any gaps
+        for d in discover(timeout: timeout) { byIP[d.ip] = d }              // SSDP: rich info (id/model/fw)
+        // Active scan fills gaps only — don't re-probe lamps SSDP already found, so we open no extra
+        // connection to a lamp another client (e.g. Home Assistant) is already holding.
+        for d in scan(exclude: Set(byIP.keys)) where byIP[d.ip] == nil { byIP[d.ip] = d }
         return byIP.values.sorted { $0.ip.compare($1.ip, options: .numeric) == .orderedAscending }
     }
 
     /// Active scan: probe TCP `port` on every host of the local /24 subnet(s), concurrently.
-    public static func scan(port: UInt16 = 55443, connectTimeoutMs: Int32 = 200) -> [DiscoveredDevice] {
+    /// `exclude` skips IPs already known (e.g. from SSDP) so we don't open a redundant connection to them.
+    public static func scan(port: UInt16 = 55443, connectTimeoutMs: Int32 = 200,
+                            exclude: Set<String> = []) -> [DiscoveredDevice] {
         var hosts: [String] = []
         for prefix in localIPv4Subnets() {
-            for host in 1...254 { hosts.append("\(prefix)\(host)") }
+            for host in 1...254 { let ip = "\(prefix)\(host)"; if !exclude.contains(ip) { hosts.append(ip) } }
         }
         guard !hosts.isEmpty else { return [] }
 
